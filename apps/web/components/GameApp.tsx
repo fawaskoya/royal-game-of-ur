@@ -1,0 +1,135 @@
+"use client";
+
+import { useState } from "react";
+import { DIFFICULTIES, type DifficultyId } from "@ur/ai";
+import type { PlayerId } from "@ur/engine";
+import { GameView } from "./GameView";
+import type { GameMode } from "@/lib/useGame";
+
+type MenuChoice = "pvp" | "ai" | "watch";
+
+function DifficultySelect({
+  id,
+  label,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: DifficultyId;
+  onChange(v: DifficultyId): void;
+}) {
+  return (
+    <label className="flex items-center justify-between gap-3 text-sm" htmlFor={id}>
+      <span className="text-[var(--ink-dim)]">{label}</span>
+      <select
+        id={id}
+        className="btn rounded-lg px-3 py-1.5 text-sm"
+        value={value}
+        onChange={(e) => onChange(e.target.value as DifficultyId)}
+      >
+        {DIFFICULTIES.map((d) => (
+          <option key={d.id} value={d.id}>
+            {d.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+export function GameApp() {
+  const [mode, setMode] = useState<GameMode | null>(null);
+  const [choice, setChoice] = useState<MenuChoice>("ai");
+  const [difficulty, setDifficulty] = useState<DifficultyId>("medium");
+  const [seat, setSeat] = useState<PlayerId>(0);
+  const [lightAi, setLightAi] = useState<DifficultyId>("expert");
+  const [darkAi, setDarkAi] = useState<DifficultyId>("medium");
+  const [gameId, setGameId] = useState(0);
+
+  if (mode) {
+    return <GameView key={gameId} mode={mode} onExit={() => setMode(null)} />;
+  }
+
+  const start = () => {
+    setGameId((n) => n + 1);
+    if (choice === "pvp") setMode({ kind: "pvp" });
+    else if (choice === "ai") setMode({ kind: "ai", human: seat, difficulty });
+    else setMode({ kind: "watch", light: lightAi, dark: darkAi });
+  };
+
+  const card = (value: MenuChoice, title: string, blurb: string) => (
+    <button
+      className={[
+        "btn w-full rounded-xl px-4 py-3 text-left",
+        choice === value ? "ring-1 ring-[var(--gold)]" : "",
+      ].join(" ")}
+      onClick={() => setChoice(value)}
+      aria-pressed={choice === value}
+    >
+      <div className="font-display">{title}</div>
+      <div className="mt-0.5 text-xs text-[var(--ink-dim)]">{blurb}</div>
+    </button>
+  );
+
+  const selectedInfo = DIFFICULTIES.find((d) => d.id === difficulty);
+
+  return (
+    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-6 px-4 py-10">
+      <header className="text-center">
+        <div className="text-xs uppercase tracking-[0.3em] text-[var(--ink-dim)]">c. 2600 BCE · Mesopotamia</div>
+        <h1 className="font-display mt-2 text-4xl text-[var(--gold)]">Royal Game of Ur</h1>
+        <p className="mt-3 text-sm text-[var(--ink-dim)]">
+          The world&apos;s oldest playable board game. Race your seven pieces around the board;
+          rosettes grant another throw; the shared lane is a battlefield.
+        </p>
+      </header>
+
+      <div className="flex flex-col gap-2.5">
+        {card("ai", "Play the machine", "Five honest difficulty tiers — none of them cheat.")}
+        {card("pvp", "Two players", "Pass and play at one screen.")}
+        {card("watch", "Watch AI vs AI", "Set two engines against each other.")}
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-xl bg-[var(--bg-raised)] p-4">
+        {choice === "ai" ? (
+          <>
+            <DifficultySelect id="difficulty" label="Opponent" value={difficulty} onChange={setDifficulty} />
+            {selectedInfo ? <p className="text-xs text-[var(--ink-dim)]">{selectedInfo.description}</p> : null}
+            <label className="flex items-center justify-between gap-3 text-sm" htmlFor="seat">
+              <span className="text-[var(--ink-dim)]">You play</span>
+              <select
+                id="seat"
+                className="btn rounded-lg px-3 py-1.5 text-sm"
+                value={seat}
+                onChange={(e) => setSeat(Number(e.target.value) as PlayerId)}
+              >
+                <option value={0}>Light (first)</option>
+                <option value={1}>Dark (second)</option>
+              </select>
+            </label>
+          </>
+        ) : null}
+        {choice === "watch" ? (
+          <>
+            <DifficultySelect id="light-ai" label="Light engine" value={lightAi} onChange={setLightAi} />
+            <DifficultySelect id="dark-ai" label="Dark engine" value={darkAi} onChange={setDarkAi} />
+          </>
+        ) : null}
+        {choice === "pvp" ? (
+          <p className="text-xs text-[var(--ink-dim)]">
+            Light rolls first. Rosettes (the gold flowers) grant another throw; the central rosette is safe ground.
+          </p>
+        ) : null}
+
+        <button className="btn btn-primary mt-1 rounded-lg px-5 py-2.5" onClick={start}>
+          Begin
+        </button>
+      </div>
+
+      <footer className="text-center text-xs text-[var(--ink-dim)]">
+        Classic Irving Finkel rules · British Museum reconstruction
+      </footer>
+    </main>
+  );
+}
