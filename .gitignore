@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Builds
+dist/
+.next/
+out/
+*.tsbuildinfo
+
+# Test artifacts
+coverage/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*

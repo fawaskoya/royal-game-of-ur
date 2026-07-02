@@ -1,0 +1,21 @@
+{
+  "name": "@ur/cli",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Terminal runner for the Royal Game of Ur: demo games, AI-vs-AI simulations, and difficulty-ladder benchmarks.",
+  "type": "module",
+  "scripts": {
+    "demo": "tsx src/main.ts demo",
+    "sim": "tsx src/main.ts sim",
+    "bench": "tsx src/main.ts bench",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ur/ai": "workspace:*",
+    "@ur/engine": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0"
+  }
+}

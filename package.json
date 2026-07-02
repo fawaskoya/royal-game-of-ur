@@ -1,0 +1,23 @@
+{
+  "name": "royal-game-of-ur",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The definitive digital Royal Game of Ur — deterministic rules engine, modular AI opponents, and a museum-grade web client.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.17.1",
+  "scripts": {
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "build": "pnpm -r build",
+    "demo": "pnpm --filter @ur/cli demo",
+    "sim": "pnpm --filter @ur/cli sim",
+    "bench": "pnpm --filter @ur/cli bench",
+    "dev": "pnpm --filter @ur/web dev"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.0"
+  }
+}
