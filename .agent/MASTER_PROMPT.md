@@ -27,18 +27,22 @@ future-ready for online multiplayer and leaderboards.
 | Phase | Scope | Status |
 |---|---|---|
 | 0 | Project audit → `docs/PROJECT_AUDIT.md` | ✅ done |
-| 1 | Responsive orientation + board fit (no scroll, all viewports) | ✅ done — see `docs/RESPONSIVE_LAYOUT.md` |
-| 2 | Game persistence (localStorage, versioned schema, restore on reload) | ⬜ next |
-| 3 | UI/UX cohesion polish | ⬜ |
-| 4 | Gameplay feel (move history, end-game summary, animations) | ⬜ |
-| 5 | Tutorial section + tutorial mode | ⬜ |
-| 6 | AI difficulty architecture improvements + hint engine | ⬜ |
-| 7 | Multiplayer architecture prep (docs + interfaces only) | ⬜ |
-| 8 | Local stats + leaderboard prep | ⬜ |
-| 9 | Menu/settings app shell | ⬜ |
+| 1 | Responsive orientation + board fit (no scroll, all viewports) | ✅ done — `docs/RESPONSIVE_LAYOUT.md` |
+| 2 | Game persistence (versioned save, restore, confirmations) | ✅ done 2026-07-04 — `docs/PERSISTENCE.md` |
+| 3 | UI/UX cohesion polish | ✅ done 2026-07-04 — `docs/UI_UX_DESIGN_SYSTEM.md` |
+| 4 | Gameplay feel (history, end-game summary, animations, hints UI) | ✅ done 2026-07-04 — `docs/GAMEPLAY_EXPERIENCE.md` |
+| 5 | Tutorial section + interactive tutorial mode | ✅ done 2026-07-05 — `docs/TUTORIAL_AND_STRATEGY.md` |
+| 6 | AI six-tier ladder (Master) + hint engine | ✅ done 2026-07-04 — `docs/AI_ENGINE.md` (master 56% vs expert) |
+| 7 | Multiplayer architecture prep (docs + interfaces only) | ✅ done 2026-07-05 — `docs/MULTIPLAYER_ARCHITECTURE.md` |
+| 8 | Local stats + leaderboard prep | ✅ done 2026-07-05 — `docs/LEADERBOARDS_AND_STATS.md` |
+| 9 | Menu/settings app shell | ✅ done 2026-07-05 — `docs/APP_STRUCTURE_AND_SETTINGS.md` |
 | 10 | `.agent/` system | ✅ done |
-| 11 | Testing & quality expansion | ongoing |
-| 12 | DevOps & git hygiene | ongoing (no remote yet) |
+| 11 | Testing & quality expansion | ongoing (81 tests across 3 packages) |
+| 12 | DevOps & git hygiene | ongoing (no remote yet — AG-1) |
+
+**Next candidates:** dice-roll physics/tetrahedra visuals + sound pass (docs/TASKS.md web),
+light/parchment theme, replay viewer, PWA, full-ladder bench re-run with Master, remote + CI
+web-build job once the founder adds a GitHub remote.
 
 ## Current working branch
 

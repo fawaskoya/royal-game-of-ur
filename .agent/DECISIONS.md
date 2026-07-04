@@ -54,6 +54,36 @@ the raw toggle; keep the storage key.
 
 ---
 
+## Decision: Master tier = beam-pruned depth-4 expectimax, not MCTS
+
+Date: 2026-07-04
+Status: Accepted
+Context: The founding prompt wants a sixth tier clearly above Expert (full-width depth-3
+expectimax). Weight tuning alone and narrow endgame-only deepening both measured ~49% vs
+Expert; full-width depth 4 is ~20× cost (seconds/move).
+Decision: `beamWidth` forward pruning in the shared expectimax — inner move layers search only
+the top-3 children by static eval; **the root is never pruned**. Master = depth 4, beam 3,
+`MASTER_WEIGHTS` (adds a rosette-tempo eval term priced by exact dice probabilities).
+Alternatives considered: MCTS (docs' original sketch — bigger build, benched later if beam
+plateaus); star-1/transposition tables (heavier, kept as future speedups).
+Consequences: 56% vs Expert over 100 seeded games at ~150ms/move (inside the 750ms think
+delay). Full-ladder bench with Master pending (slow); AI_ENGINE.md records the tuning history.
+
+---
+
+## Decision: Never run `next build` against a live dev server's `.next`
+
+Date: 2026-07-05
+Status: Accepted (operational rule — AG-8)
+Context: Twice this campaign, running the production build while `pnpm dev` served the same
+`.next` corrupted dev chunks: client JS 404s, hydration dies silently, every button dead —
+looks exactly like an app bug and cost real debugging time both times.
+Decision: build-verification happens with the dev server stopped, or is followed by
+`rm -rf apps/web/.next && pnpm dev`.
+Consequences: RELEASE_CHECKLIST build step implies a dev-server restart afterward.
+
+---
+
 ## Decision: `?layout=` URL override for testing
 
 Date: 2026-07-04

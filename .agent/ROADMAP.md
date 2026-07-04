@@ -9,15 +9,18 @@ campaign* from the founding prompt (`/MASTER_PROMPT.md`, Phase 13 implementation
 1. **Audit** — `docs/PROJECT_AUDIT.md` ✅ (2026-07-04)
 2. **Responsive fit** — both orientations fit every target viewport, no gameplay scroll ✅ (2026-07-04)
 3. **Viewport matrix test** — 8 sizes, documented in `docs/RESPONSIVE_LAYOUT.md` ✅ (2026-07-04)
-4. **Persistence** — auto-save/restore, versioned schema, corrupt-save safety → `docs/PERSISTENCE.md`
-5. **New Game confirmation** — modal when a live game would be replaced
-6. **UI cohesion** — player cards, dice area, stats, header adaptivity → `docs/UI_UX_DESIGN_SYSTEM.md`
-7. **Tutorial** — section + interactive mode + strategy guide → `docs/TUTORIAL_AND_STRATEGY.md`
-8. **AI improvements** — 6-tier ladder mapping, hint engine → `docs/AI_ENGINE.md`
-9. **Stats + leaderboard prep** — local stats model, MatchResult schema → `docs/LEADERBOARDS_AND_STATS.md`
-10. **App shell** — menu (Continue/New/modes/settings), persisted settings → `docs/APP_STRUCTURE_AND_SETTINGS.md`
-11. **Full checks** — build, tests, typecheck, manual matrix
-12. **Commit + push** — push blocked until a remote exists (see KNOWN_ISSUES)
+4. **Persistence** — auto-save/restore, versioned schema, corrupt-save safety ✅ (2026-07-04)
+5. **New Game confirmation** — in-game + menu Begin modals ✅ (2026-07-04)
+6. **UI cohesion + gameplay feel** — cards, dice, hints, history, win summary ✅ (2026-07-04)
+7. **Tutorial** — guide + interactive scripted mode + strategy ✅ (2026-07-05)
+8. **AI improvements** — Master tier (6 tiers), hint engine ✅ (2026-07-04)
+9. **Stats + leaderboard prep** — MatchResult store, Stats panel, Elo plan ✅ (2026-07-05)
+10. **App shell** — Continue/How-to/Stats/Settings, persisted settings ✅ (2026-07-05)
+11. **Full checks** — 81 tests green, typecheck, prod build, 12/12 matrix ✅ (2026-07-05)
+12. **Commit + push** — committed per milestone; push blocked until a remote exists (AG-1)
+
+**Campaign complete.** Next wave candidates live in `.agent/MASTER_PROMPT.md` (dice physics +
+sound, parchment theme, replay viewer, PWA, remote+CI).
 
 ## Sequencing rules
 

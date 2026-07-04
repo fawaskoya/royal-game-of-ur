@@ -12,29 +12,30 @@ Live backlog for the agentic campaign. Engineering-level backlog per subsystem l
 
 ## High
 
-- [ ] Improve player stats layout (panel hierarchy, home/board/hand counts) — Phase 3
-- [ ] Add tutorial entry point in menu — Phase 5
-- [ ] Improve AI difficulty structure to 6 named tiers (map existing 5-tier ladder) — Phase 6
-- [ ] End-game summary screen (turns, captures, rosettes) — Phase 4
-- [ ] Move history panel — Phase 4
+- [x] Improve player stats layout (controller chip, home/board/capture counts) — 2026-07-04
+- [x] Add tutorial entry point in menu (How to play + Learn to play) — 2026-07-05
+- [x] AI six-tier ladder — Master added (beam depth-4, 56% vs expert) — 2026-07-04
+- [x] End-game summary screen (turns, duration, captures, rosettes) — 2026-07-04
+- [x] Move history panel (turn-grouped drawer) — 2026-07-04
 
 ## Medium
 
-- [ ] Settings panel (orientation pref, animation speed, sound, hints, confirm-new) — Phase 9
-- [ ] Hint engine using AI evaluation — Phase 6
-- [ ] Dice roll animation upgrade (physics/quick/instant) — Phase 4 (also docs/TASKS.md web)
-- [ ] Local stats model + MatchResult schema — Phase 8
-- [ ] Keyboard shortcuts (R roll exists; add U/N/H/Esc) — Phase 3
+- [x] Settings panel (orientation pin, hints, confirm-new, motion) — 2026-07-05 (sound arrives with the audio pass)
+- [x] Hint engine using AI evaluation (+ H key, reason copy, board highlight) — 2026-07-04
+- [ ] Dice roll animation upgrade — basic tumble shipped 2026-07-04; physics/quick/instant modes + tetrahedra visuals remain (docs/TASKS.md web)
+- [x] Local stats model + MatchResult schema (+ Stats panel) — 2026-07-05
+- [x] Keyboard shortcuts R/H/U/N/Esc — 2026-07-04
 
 ## Low
 
-- [ ] Light/parchment theme — Phase 3 (tokens exist in globals.css)
-- [ ] Sound design pass — Phase 4
-- [ ] Replay viewer UI (engine support already exists) — Phase 4+
+- [ ] Light/parchment theme — tokens exist in globals.css
+- [ ] Sound design pass (+ settings toggle)
+- [ ] Replay viewer UI (engine support already exists)
+- [ ] Full-ladder `pnpm bench` re-run including Master (long: ~150ms/move); record in AI_ENGINE.md
 
 ## Future
 
-- [ ] Multiplayer transport interfaces + backend recommendation — Phase 7 (docs only)
-- [ ] Leaderboard categories + Elo plan — Phase 8 (docs only)
+- [x] Multiplayer transport interfaces + backend recommendation — 2026-07-05 (docs + types only)
+- [x] Leaderboard categories + Elo plan — 2026-07-05 (docs only)
 - [ ] PWA (offline, installable)
-- [ ] Create GitHub remote + push (founder must choose account — blocked on founder)
+- [ ] Create GitHub remote + push (founder must choose account — blocked on founder, AG-1)
