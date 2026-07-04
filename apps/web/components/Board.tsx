@@ -62,9 +62,11 @@ export interface BoardProps {
   /** "horizontal" (default): 8 cols × 3 rows, as the board is traditionally drawn.
    *  "vertical": transposed to 3 cols × 8 rows, to suit a portrait/tall layout. */
   orientation?: "horizontal" | "vertical";
+  /** Hint-engine suggestion: its destination is ringed, its piece pulses. */
+  hintMove?: Move | null;
 }
 
-export function Board({ state, legal, canAct, onMove, orientation = "horizontal" }: BoardProps) {
+export function Board({ state, legal, canAct, onMove, orientation = "horizontal", hintMove }: BoardProps) {
   const layout = useMemo(() => getLayout(state.ruleset), [state.ruleset]);
   const occ = useMemo(() => occupancy(state), [state]);
   const [hovered, setHovered] = useState<Move | null>(null);
@@ -76,15 +78,38 @@ export function Board({ state, legal, canAct, onMove, orientation = "horizontal"
     return map;
   }, [legal]);
 
-  const targetKeys = useMemo(() => {
-    const keys = new Set<string>();
-    const source = hovered ? [hovered] : [];
-    for (const move of source) {
+  // Destination rings for the hovered/hinted move; "capture" when the square
+  // holds an opponent piece.
+  const targets = useMemo(() => {
+    const map = new Map<string, "plain" | "capture">();
+    for (const move of [hovered, hintMove]) {
+      if (!move) continue;
       const key = layout.keyAt(move.player, move.to);
-      if (key) keys.add(key);
+      if (!key) continue;
+      const occupant = occ.get(key);
+      map.set(key, occupant && occupant.player !== move.player ? "capture" : "plain");
+    }
+    return map;
+  }, [hovered, hintMove, layout, occ]);
+
+  // Quiet wash on the from/to squares of the most recent move.
+  const lastMoveKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (let i = state.history.length - 1; i >= 0; i--) {
+      const event = state.history[i]!;
+      if (event.type === "move") {
+        for (const index of [event.from, event.to]) {
+          const key = layout.keyAt(event.player, index);
+          if (key) keys.add(key);
+        }
+        break;
+      }
+      if (event.type === "roll") break; // a fresh roll clears the wash
     }
     return keys;
-  }, [hovered, layout]);
+  }, [state.history, layout]);
+
+  const hintPieceKey = hintMove && hintMove.from > 0 ? layout.keyAt(hintMove.player, hintMove.from) : null;
 
   // Transpose row/col for the vertical (portrait) orientation; the engine's
   // row/col stay untouched so game-semantics checks below (e.g. shared lane)
@@ -115,7 +140,8 @@ export function Board({ state, legal, canAct, onMove, orientation = "horizontal"
           const occupant = occ.get(info.key);
           const move = occupant ? moveForPiece.get(`${occupant.player}-${occupant.piece}`) : undefined;
           const interactive = canAct && move !== undefined && occupant?.player === state.current;
-          const isTarget = targetKeys.has(info.key);
+          const target = targets.get(info.key);
+          const isHintPiece = hintPieceKey === info.key;
           const label = [
             info.rosette ? "rosette square" : "square",
             `row ${info.cell.row + 1}, column ${info.cell.col + 1}`,
@@ -132,7 +158,8 @@ export function Board({ state, legal, canAct, onMove, orientation = "horizontal"
                 "tile relative rounded-md",
                 info.cell.row === 1 ? "tile-lane" : "",
                 info.rosette ? "tile-rosette" : "",
-                isTarget ? "tile-target" : "",
+                target === "capture" ? "tile-target-capture" : target === "plain" ? "tile-target" : "",
+                !target && lastMoveKeys.has(info.key) ? "tile-last" : "",
               ].join(" ")}
               style={place(info.cell.row, info.cell.col)}
             >
@@ -144,7 +171,10 @@ export function Board({ state, legal, canAct, onMove, orientation = "horizontal"
                   layoutId={`piece-${occupant.player}-${occupant.piece}`}
                   layout
                   transition={{ type: "spring", stiffness: 420, damping: 32 }}
-                  className="absolute inset-0 flex items-center justify-center"
+                  className={[
+                    "absolute inset-0 flex items-center justify-center",
+                    isHintPiece ? "piece-hint rounded-md" : "",
+                  ].join(" ")}
                   style={{ cursor: interactive ? "pointer" : "default" }}
                   disabled={!interactive}
                   onClick={() => move && onMove(move)}

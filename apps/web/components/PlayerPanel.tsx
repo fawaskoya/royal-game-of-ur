@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { finishedCount, getLayout, type GameState, type Move, type PlayerId } from "@ur/engine";
 import { PieceDisc } from "./Board";
@@ -19,36 +20,51 @@ export interface PlayerPanelProps {
 export function PlayerPanel({ state, player, controller, active, entryMove, canAct, onMove }: PlayerPanelProps) {
   const layout = getLayout(state.ruleset);
   const name = player === 0 ? "Light" : "Dark";
-  const who = controller === "human" ? "" : ` · ${controller}`;
   const home = finishedCount(state, player);
   const entryPlayable = canAct && entryMove !== null;
 
   const poolPieces: number[] = [];
-  const homePieces: number[] = [];
+  let onBoard = 0;
   state.positions[player].forEach((index, piece) => {
     if (index === 0) poolPieces.push(piece);
-    if (index === layout.finishIndex) homePieces.push(piece);
+    else if (index !== layout.finishIndex) onBoard++;
   });
+
+  const captures = useMemo(
+    () => state.history.filter((e) => e.type === "move" && e.player === player && e.capture).length,
+    [state.history, player],
+  );
 
   return (
     <div
       className={[
-        "player-panel flex items-center justify-between gap-3 rounded-xl px-3 py-2 sm:px-4",
-        active ? "bg-[var(--bg-raised)] ring-1 ring-[var(--gold-soft)]" : "",
+        "player-panel flex flex-col gap-1.5 rounded-xl px-3 py-2 sm:px-4",
+        active ? "player-panel--active bg-[var(--bg-raised)] ring-1 ring-[var(--gold-soft)]" : "",
       ].join(" ")}
     >
-      <div className="flex items-center gap-2.5">
-        <PieceDisc player={player} small />
-        <div>
-          <div className="font-display text-sm sm:text-base">
-            {name}
-            <span className="text-[var(--ink-dim)]">{who}</span>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <PieceDisc player={player} small />
+          <div className="flex items-baseline gap-2">
+            <span className="font-display text-sm sm:text-base">{name}</span>
+            <span className="chip">{controller === "human" ? "Human" : controller}</span>
           </div>
-          {active ? <div className="text-xs text-[var(--gold)]">to play</div> : null}
+        </div>
+        <div className="flex items-center gap-2">
+          {active ? <span className="text-xs text-[var(--gold)]">to play</span> : null}
+          <div
+            className="text-right"
+            aria-label={`${name} has borne off ${home} of ${state.ruleset.piecesPerPlayer} pieces`}
+          >
+            <span className="font-display text-lg leading-none text-[var(--gold)]">{home}</span>
+            <span className="ml-1 text-[10px] uppercase tracking-widest text-[var(--ink-dim)]">
+              / {state.ruleset.piecesPerPlayer} home
+            </span>
+          </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-3 sm:gap-5">
+      <div className="flex items-center justify-between gap-3">
         <button
           className={[
             "flex min-h-6 items-center gap-1 rounded-lg px-1.5 py-1",
@@ -77,9 +93,13 @@ export function PlayerPanel({ state, player, controller, active, entryMove, canA
           ) : null}
         </button>
 
-        <div className="text-right" aria-label={`${name} has borne off ${home} of ${state.ruleset.piecesPerPlayer} pieces`}>
-          <div className="font-display text-lg leading-none text-[var(--gold)]">{home}</div>
-          <div className="text-[10px] uppercase tracking-widest text-[var(--ink-dim)]">home</div>
+        <div className="flex items-center gap-1.5 text-[11px] text-[var(--ink-dim)]">
+          <span className="chip" aria-label={`${onBoard} pieces on the board`}>
+            {onBoard} on board
+          </span>
+          <span className="chip" aria-label={`${captures} captures made`}>
+            <span aria-hidden>⚔</span> {captures}
+          </span>
         </div>
       </div>
     </div>

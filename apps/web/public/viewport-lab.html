@@ -96,6 +96,72 @@
     } catch { badge.textContent = "…"; badge.className = ""; }
   }, 400);
 
+  // Scriptable one-shot cell check (used by automated matrix sweeps):
+  // loads size+layout, starts a game (confirming the new-game dialog if a
+  // save exists), and reports FIT / SCROLL-OVERFLOW / CLIPPED.
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const clickIn = (b) => b.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+  window.runCell = async function (w, h, lay) {
+    size = [w, h, "scripted"];
+    layout = lay;
+    apply();
+    await new Promise((res) => { frame.onload = res; });
+    await sleep(400);
+    for (let i = 0; i < 20; i++) {
+      const btn = [...frame.contentDocument.querySelectorAll("button")].find((b) => /^Begin$/.test(b.textContent.trim()));
+      if (btn) { clickIn(btn); break; }
+      await sleep(200);
+    }
+    await sleep(400);
+    const confirmBtn = [...frame.contentDocument.querySelectorAll('[role="dialog"] button')]
+      .find((b) => /Start new game/.test(b.textContent));
+    if (confirmBtn) { clickIn(confirmBtn); await sleep(400); }
+    await sleep(500);
+    const doc = frame.contentDocument;
+    const win = frame.contentWindow;
+    if (!doc.querySelector(".game-grid")) return `${w}x${h} ${lay}: GAME DID NOT START`;
+    const el = doc.scrollingElement;
+    const scroll = el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1;
+    const clipped = [];
+    doc.querySelectorAll(".board-frame, .player-panel, .dice-tray, .game-header button").forEach((t) => {
+      const r = t.getBoundingClientRect();
+      if (r.right > win.innerWidth + 1 || r.bottom > win.innerHeight + 1 || r.left < -1 || r.top < -1) {
+        clipped.push(`${t.className.split(" ")[0] || t.tagName} r=${Math.round(r.right)} b=${Math.round(r.bottom)}`);
+      }
+    });
+    return `${w}x${h} ${lay}: ${scroll ? `SCROLL-OVERFLOW ${el.scrollWidth}x${el.scrollHeight}` : clipped.length ? `CLIPPED: ${clipped.join("; ")}` : "FIT"}`;
+  };
+
+  window.runMatrix = async function () {
+    const cells = [
+      [390, 844, "vertical"], [430, 932, "vertical"],
+      [844, 390, "horizontal"], [932, 430, "horizontal"],
+      [1024, 768, "horizontal"], [1024, 768, "vertical"],
+      [1366, 768, "horizontal"], [1366, 768, "vertical"],
+      [1440, 900, "horizontal"], [1440, 900, "vertical"],
+      [1920, 1080, "horizontal"], [1920, 1080, "vertical"],
+    ];
+    let pre = document.getElementById("matrix-results");
+    if (!pre) {
+      pre = document.createElement("pre");
+      pre.id = "matrix-results";
+      pre.style.cssText =
+        "position:fixed;left:10px;bottom:10px;z-index:9;background:#0b0e14;border:1px solid #2a2f3a;" +
+        "padding:10px 14px;font:12px/1.5 ui-monospace,monospace;max-height:45vh;overflow:auto;";
+      document.body.appendChild(pre);
+    }
+    pre.textContent = "running matrix…\n";
+    for (const [w, h, lay] of cells) {
+      pre.textContent += (await window.runCell(w, h, lay)) + "\n";
+    }
+    pre.textContent += "DONE";
+    return pre.textContent;
+  };
+
+  // Visiting /viewport-lab.html#matrix runs the full sweep automatically and
+  // renders results on-page — no external scripting needed.
+  if (location.hash === "#matrix") window.runMatrix();
+
   apply();
 </script>
 </body>
