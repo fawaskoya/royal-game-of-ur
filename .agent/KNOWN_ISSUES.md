@@ -7,8 +7,6 @@ Status: Open | In Progress | Mitigated | Resolved
 | ID | Issue | Impact | Plan |
 |----|-------|--------|------|
 | AG-1 | No git remote configured — commits are local-only, no off-machine backup. | Disk loss loses the project. | Founder must pick the GitHub account (personal vs `potentdream`) and add a remote; then `git push -u origin main` + branch. |
-| AG-2 | Game state resets on page refresh (no persistence). | Core UX gap; top of backlog. | Phase 2 persistence loop (`.agent/loops/02-persistence-loop.md`). |
-| AG-3 | No "New Game" confirmation — one tap wipes a live game. | Accidental data loss. | Ships with Phase 2 (needs saved-game detection). |
 | AG-4 | No lint script configured (`pnpm lint` doesn't exist). | Style drift risk. | Don't invent commands (founding prompt). Consider adding ESLint in a devops loop; until then typecheck + tests are the gate. |
 | AG-5 | Tile squareness in fit mode is approximate (frame `aspect-ratio` includes padding/gaps, so tiles deviate a few % from square). | Cosmetic only. | Accepted; revisit if a texture pass makes it visible. |
 | AG-6 | Dev-only `?layout=` override bypasses touch auto-orientation. | Could confuse if shared in a URL. | Test-only by convention; remove or gate if it causes confusion. |
@@ -18,6 +16,8 @@ Status: Open | In Progress | Mitigated | Resolved
 
 | ID | Issue | Resolution |
 |----|-------|------------|
+| AG-2 | Game state reset on page refresh (no persistence). | 2026-07-04 — versioned save over engine `ur-session@1` with replay cross-check; auto-save/restore + Continue card (`docs/PERSISTENCE.md`, 8 unit tests). |
+| AG-3 | No "New Game" confirmation — one tap wiped a live game. | 2026-07-04 — confirmation modal in-game and on menu Begin when a save exists. |
 | AG-0a | Horizontal mode board overflowed viewport (required scrolling). | 2026-07-04 — container-query fit; verified on 8-viewport matrix (`docs/RESPONSIVE_LAYOUT.md`). |
 | AG-0b | Vertical mode overflowed mobile portrait. | 2026-07-04 — same fit system; non-scrolling in both orientations. |
 | AG-0c | Stale production server (`next start` from 2026-07-02) masked live edits during dev. | 2026-07-04 — killed; `pnpm dev` is the workflow (log: /tmp/ur-web-dev.log). |

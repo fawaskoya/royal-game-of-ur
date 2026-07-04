@@ -19,6 +19,8 @@ import {
   type Rng,
 } from "@ur/engine";
 import { createAgent, type DifficultyId, type UrAgent } from "@ur/ai";
+import { clearGame, saveGame } from "@/lib/persistence/gameStorage";
+import { CURRENT_SAVE_VERSION, type SavedGame } from "@/lib/persistence/saveSchema";
 
 export type GameMode =
   | { kind: "pvp" }
@@ -54,6 +56,10 @@ export interface UseGameResult {
   humanCanRoll: boolean;
   humanCanMove: boolean;
   canUndo: boolean;
+  /** True when this game was resumed from a saved snapshot. */
+  restored: boolean;
+  /** ISO timestamp of when the current game began. */
+  startedAt: string;
   roll(): void;
   movePiece(move: Move): void;
   undo(): void;
@@ -65,9 +71,39 @@ interface Snapshot {
   tail: readonly GameEvent[];
 }
 
-export function useGame(mode: GameMode): UseGameResult {
+interface GameMeta {
+  gameId: string;
+  startedAt: string;
+}
+
+function freshMeta(): GameMeta {
+  const id =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `g-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  return { gameId: id, startedAt: new Date().toISOString() };
+}
+
+export function useGame(mode: GameMode, resume?: SavedGame): UseGameResult {
+  const restoredRef = useRef(false);
+  const metaRef = useRef<GameMeta | null>(null);
   const sessionRef = useRef<GameSession | null>(null);
-  if (sessionRef.current === null) sessionRef.current = new GameSession({});
+  if (sessionRef.current === null) {
+    if (resume) {
+      // The save was validated before we got here, but storage can rot
+      // between reads — fall back to a fresh game rather than crash.
+      try {
+        sessionRef.current = GameSession.deserialize(resume.session);
+        metaRef.current = { gameId: resume.gameId, startedAt: resume.startedAt };
+        restoredRef.current = true;
+      } catch {
+        sessionRef.current = new GameSession({});
+      }
+    } else {
+      sessionRef.current = new GameSession({});
+    }
+  }
+  if (metaRef.current === null) metaRef.current = freshMeta();
   const agentRngRef = useRef<Rng | null>(null);
   if (agentRngRef.current === null) agentRngRef.current = createRng(Date.now() >>> 0);
   const agentsRef = useRef(new Map<DifficultyId, UrAgent>());
@@ -113,8 +149,29 @@ export function useGame(mode: GameMode): UseGameResult {
 
   const newGame = useCallback(() => {
     sessionRef.current = new GameSession({});
+    metaRef.current = freshMeta();
+    restoredRef.current = false;
+    clearGame();
     setSnapshot({ state: sessionRef.current.state, tail: [] });
   }, []);
+
+  // Auto-save after every state change. An untouched game equals a fresh
+  // one, and finished games leave the active slot — both clear the save.
+  useEffect(() => {
+    if (state.history.length === 0 || state.winner !== null) {
+      clearGame();
+      return;
+    }
+    const meta = metaRef.current!;
+    saveGame({
+      version: CURRENT_SAVE_VERSION,
+      savedAt: new Date().toISOString(),
+      startedAt: meta.startedAt,
+      gameId: meta.gameId,
+      mode,
+      session: sessionRef.current!.serialize(),
+    });
+  }, [state, mode]);
 
   // AI driver: whenever it's an AI's turn, schedule its next action with a
   // human-feeling delay. Every state change re-arms the effect, so rosette
@@ -154,6 +211,8 @@ export function useGame(mode: GameMode): UseGameResult {
     humanCanRoll: !aiTurn && phase === "awaiting-roll",
     humanCanMove: !aiTurn && phase === "awaiting-move",
     canUndo: mode.kind !== "watch" && state.history.length > 0 && !aiTurn,
+    restored: restoredRef.current,
+    startedAt: metaRef.current.startedAt,
     roll,
     movePiece,
     undo,

@@ -1,12 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DIFFICULTIES, type DifficultyId } from "@ur/ai";
 import type { PlayerId } from "@ur/engine";
 import { GameView } from "./GameView";
 import type { GameMode } from "@/lib/useGame";
+import { clearGame, loadGame } from "@/lib/persistence/gameStorage";
+import type { SavedGame } from "@/lib/persistence/saveSchema";
+import { Modal } from "./ui/Modal";
 
 type MenuChoice = "pvp" | "ai" | "watch";
+
+function difficultyLabel(id: DifficultyId): string {
+  return DIFFICULTIES.find((d) => d.id === id)?.label ?? id;
+}
+
+function modeLabel(mode: GameMode): string {
+  switch (mode.kind) {
+    case "pvp":
+      return "Two players";
+    case "ai":
+      return `You (${mode.human === 0 ? "Light" : "Dark"}) vs ${difficultyLabel(mode.difficulty)}`;
+    case "watch":
+      return `Watching ${difficultyLabel(mode.light)} vs ${difficultyLabel(mode.dark)}`;
+  }
+}
+
+function timeAgo(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return "just now";
+  const minutes = Math.floor(ms / 60_000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} h ago`;
+  const days = Math.floor(hours / 24);
+  return days === 1 ? "yesterday" : `${days} days ago`;
+}
 
 function DifficultySelect({
   id,
@@ -46,16 +76,49 @@ export function GameApp() {
   const [lightAi, setLightAi] = useState<DifficultyId>("expert");
   const [darkAi, setDarkAi] = useState<DifficultyId>("medium");
   const [gameId, setGameId] = useState(0);
+  const [saved, setSaved] = useState<SavedGame | null>(null);
+  const [resume, setResume] = useState<SavedGame | undefined>(undefined);
+  const [confirmBegin, setConfirmBegin] = useState(false);
+
+  // (Re)check for a saved game whenever the menu is showing — the game
+  // auto-saves, so returning from a live game brings its save with it.
+  useEffect(() => {
+    if (mode === null) setSaved(loadGame());
+  }, [mode]);
 
   if (mode) {
-    return <GameView key={gameId} mode={mode} onExit={() => setMode(null)} />;
+    return (
+      <GameView
+        key={gameId}
+        mode={mode}
+        resume={resume}
+        onExit={() => {
+          setResume(undefined);
+          setMode(null);
+        }}
+      />
+    );
   }
 
-  const start = () => {
+  const begin = () => {
     setGameId((n) => n + 1);
+    setResume(undefined);
+    clearGame();
     if (choice === "pvp") setMode({ kind: "pvp" });
     else if (choice === "ai") setMode({ kind: "ai", human: seat, difficulty });
     else setMode({ kind: "watch", light: lightAi, dark: darkAi });
+  };
+
+  const start = () => {
+    if (saved) setConfirmBegin(true);
+    else begin();
+  };
+
+  const continueGame = () => {
+    if (!saved) return;
+    setGameId((n) => n + 1);
+    setResume(saved);
+    setMode(saved.mode);
   };
 
   const card = (value: MenuChoice, title: string, blurb: string) => (
@@ -85,8 +148,27 @@ export function GameApp() {
         </p>
       </header>
 
+      {saved ? (
+        <button
+          className="btn w-full rounded-xl px-4 py-3 text-left ring-1 ring-[var(--gold)]"
+          onClick={continueGame}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="font-display text-[var(--gold)]">Continue game</div>
+              <div className="mt-0.5 text-xs text-[var(--ink-dim)]">
+                {modeLabel(saved.mode)} · saved {timeAgo(saved.savedAt)}
+              </div>
+            </div>
+            <span aria-hidden className="font-display text-xl text-[var(--gold)]">
+              ›
+            </span>
+          </div>
+        </button>
+      ) : null}
+
       <div className="flex flex-col gap-2.5">
-        {card("ai", "Play the machine", "Five honest difficulty tiers — none of them cheat.")}
+        {card("ai", "Play the machine", "Honest difficulty tiers — none of them cheat.")}
         {card("pvp", "Two players", "Pass and play at one screen.")}
         {card("watch", "Watch AI vs AI", "Set two engines against each other.")}
       </div>
@@ -130,6 +212,35 @@ export function GameApp() {
       <footer className="text-center text-xs text-[var(--ink-dim)]">
         Classic Irving Finkel rules · British Museum reconstruction
       </footer>
+
+      <Modal
+        open={confirmBegin}
+        title="Start a new game?"
+        onClose={() => setConfirmBegin(false)}
+        actions={
+          <>
+            <button className="btn rounded-lg px-4 py-2 text-sm" onClick={() => setConfirmBegin(false)}>
+              Cancel
+            </button>
+            <button
+              className="btn btn-primary rounded-lg px-4 py-2 text-sm"
+              onClick={() => {
+                setConfirmBegin(false);
+                begin();
+              }}
+            >
+              Start new game
+            </button>
+          </>
+        }
+      >
+        {saved ? (
+          <>
+            Your saved game ({modeLabel(saved.mode)}) will be replaced. Choose{" "}
+            <em>Continue game</em> instead to pick it back up.
+          </>
+        ) : null}
+      </Modal>
     </main>
   );
 }

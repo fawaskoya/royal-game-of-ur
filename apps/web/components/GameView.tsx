@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, LayoutGroup, MotionConfig, motion } from "framer-motion";
 import type { GameEvent } from "@ur/engine";
 import { controllerOf, useGame, type GameMode } from "@/lib/useGame";
 import { useGameLayout } from "@/lib/useGameLayout";
+import type { SavedGame } from "@/lib/persistence/saveSchema";
 import { Board } from "./Board";
 import { PlayerPanel } from "./PlayerPanel";
 import { DiceTray } from "./DiceTray";
+import { Modal } from "./ui/Modal";
 
 function describe(event: GameEvent): string {
   const who = event.player === 0 ? "Light" : "Dark";
@@ -29,10 +31,31 @@ function describe(event: GameEvent): string {
   }
 }
 
-export function GameView({ mode, onExit }: { mode: GameMode; onExit(): void }) {
-  const game = useGame(mode);
+export function GameView({
+  mode,
+  resume,
+  onExit,
+}: {
+  mode: GameMode;
+  resume?: SavedGame;
+  onExit(): void;
+}) {
+  const game = useGame(mode, resume);
   const { state, legal, tail } = game;
   const { layout, isTouch, toggle: toggleLayout } = useGameLayout();
+  const [confirmNew, setConfirmNew] = useState(false);
+  const [showRestored, setShowRestored] = useState(game.restored);
+
+  useEffect(() => {
+    if (!showRestored) return;
+    const timer = setTimeout(() => setShowRestored(false), 2600);
+    return () => clearTimeout(timer);
+  }, [showRestored]);
+
+  const requestNewGame = () => {
+    if (state.history.length > 0 && state.winner === null) setConfirmNew(true);
+    else game.newGame();
+  };
 
   const entryMoves = useMemo(
     () => ({
@@ -80,7 +103,7 @@ export function GameView({ mode, onExit }: { mode: GameMode; onExit(): void }) {
             <button className="btn rounded-lg px-3 py-1.5 text-sm" disabled={!game.canUndo} onClick={game.undo}>
               Undo
             </button>
-            <button className="btn rounded-lg px-3 py-1.5 text-sm" onClick={game.newGame}>
+            <button className="btn rounded-lg px-3 py-1.5 text-sm" onClick={requestNewGame}>
               New
             </button>
           </div>
@@ -108,6 +131,21 @@ export function GameView({ mode, onExit }: { mode: GameMode; onExit(): void }) {
                 onMove={game.movePiece}
                 orientation={layout}
               />
+              <AnimatePresence>
+                {showRestored ? (
+                  <motion.div
+                    key="restored"
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="pointer-events-none absolute inset-x-0 top-2 flex justify-center"
+                  >
+                    <div className="rounded-full border border-[var(--frame-edge)] bg-[var(--bg-raised)]/95 px-4 py-1.5 text-xs text-[var(--gold)]">
+                      Game restored
+                    </div>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
               <AnimatePresence>
                 {passToast ? (
                   <motion.div
@@ -154,6 +192,30 @@ export function GameView({ mode, onExit }: { mode: GameMode; onExit(): void }) {
         <div aria-live="polite" className="sr-only">
           {tail.map(describe).join(" ")}
         </div>
+
+        <Modal
+          open={confirmNew}
+          title="Start a new game?"
+          onClose={() => setConfirmNew(false)}
+          actions={
+            <>
+              <button className="btn rounded-lg px-4 py-2 text-sm" onClick={() => setConfirmNew(false)}>
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary rounded-lg px-4 py-2 text-sm"
+                onClick={() => {
+                  setConfirmNew(false);
+                  game.newGame();
+                }}
+              >
+                Start new game
+              </button>
+            </>
+          }
+        >
+          Your current game will be replaced. This can&apos;t be undone.
+        </Modal>
 
         <AnimatePresence>
           {state.winner !== null ? (
