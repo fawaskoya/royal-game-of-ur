@@ -37,4 +37,8 @@ Live, per-subsystem. Keep entries actionable; move finished items to the bottom 
 
 ## Done
 
+- 2026-07-04 — Responsive orientation system: portrait/landscape board layouts (touch follows
+  OS rotation, desktop toggle), container-query board fit, no-scroll game screen, compact
+  chrome for short viewports, viewport lab + 8-size matrix verified (see
+  docs/RESPONSIVE_LAYOUT.md, ADR 0004). Agentic system added under `.agent/`.
 - 2026-07-02 — Phase 0 + Phase 1 complete (engine 48 tests, AI ladder verified, CLI, playable web client). Initial commits `bff8c12`, `b8671cd`.

@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Ur — Viewport Lab</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; font: 13px/1.4 ui-sans-serif, system-ui; background: #0b0e14; color: #d8d2c4; }
+  .bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 10px; border-bottom: 1px solid #2a2f3a; position: sticky; top: 0; background: #0b0e14; z-index: 2; }
+  button { font: inherit; background: #1a2030; color: #d8d2c4; border: 1px solid #2a2f3a; border-radius: 6px; padding: 4px 9px; cursor: pointer; }
+  button.on { border-color: #c9a24b; color: #e7c56a; }
+  #badge { font-weight: 700; padding: 4px 10px; border-radius: 6px; margin-left: auto; }
+  #badge.fit { background: #133a1c; color: #7ce08a; }
+  #badge.overflow { background: #46141a; color: #ff8c96; }
+  #meta { color: #8b93a3; }
+  #stage { padding: 14px; }
+  #frameWrap { transform-origin: top left; box-shadow: 0 0 0 1px #2a2f3a, 0 18px 60px rgba(0,0,0,.5); width: fit-content; }
+  iframe { display: block; border: 0; background: #10141d; }
+</style>
+</head>
+<body>
+  <div class="bar" id="sizes"></div>
+  <div class="bar">
+    <span>Layout:</span>
+    <button id="lay-v">vertical</button>
+    <button id="lay-h">horizontal</button>
+    <button id="begin" title="Clicks the Begin button inside the app">▶ Begin game</button>
+    <button id="reload">⟳ Reload</button>
+    <span id="meta"></span>
+    <span id="badge">…</span>
+  </div>
+  <div id="stage"><div id="frameWrap"><iframe id="frame" title="app under test"></iframe></div></div>
+
+<script>
+  // Matrix must mirror .agent/TEST_PLAN.md.
+  const SIZES = [
+    [390, 844, "iPhone portrait"],
+    [430, 932, "iPhone PM portrait"],
+    [844, 390, "iPhone landscape"],
+    [932, 430, "iPhone PM landscape"],
+    [1024, 768, "tablet landscape"],
+    [1366, 768, "laptop"],
+    [1440, 900, "desktop"],
+    [1920, 1080, "desktop XL"],
+  ];
+  let size = SIZES[0];
+  let layout = "vertical";
+
+  const frame = document.getElementById("frame");
+  const wrap = document.getElementById("frameWrap");
+  const badge = document.getElementById("badge");
+  const meta = document.getElementById("meta");
+  const sizesBar = document.getElementById("sizes");
+
+  for (const s of SIZES) {
+    const b = document.createElement("button");
+    b.textContent = `${s[0]}×${s[1]}`;
+    b.title = s[2];
+    b.onclick = () => { size = s; apply(); };
+    b.dataset.k = s[0] + "x" + s[1];
+    sizesBar.appendChild(b);
+  }
+  document.getElementById("lay-v").onclick = () => { layout = "vertical"; apply(); };
+  document.getElementById("lay-h").onclick = () => { layout = "horizontal"; apply(); };
+  document.getElementById("reload").onclick = () => apply();
+  document.getElementById("begin").onclick = () => {
+    try {
+      const doc = frame.contentDocument;
+      const btn = [...doc.querySelectorAll("button")].find((b) => /begin/i.test(b.textContent));
+      if (btn) btn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    } catch (e) { console.warn(e); }
+  };
+
+  function apply() {
+    const [w, h, name] = size;
+    frame.width = w; frame.height = h;
+    frame.style.width = w + "px"; frame.style.height = h + "px";
+    const scale = Math.min(1, (innerWidth - 40) / w, (innerHeight - 130) / h);
+    wrap.style.transform = `scale(${scale})`;
+    wrap.style.height = h * scale + "px";
+    frame.src = `/?layout=${layout}`;
+    meta.textContent = `${name} · ${w}×${h} @ ${(scale * 100) | 0}% · ?layout=${layout}`;
+    for (const b of sizesBar.children) b.classList.toggle("on", b.dataset.k === w + "x" + h);
+    document.getElementById("lay-v").classList.toggle("on", layout === "vertical");
+    document.getElementById("lay-h").classList.toggle("on", layout === "horizontal");
+  }
+
+  // FIT = the app's document does not exceed the iframe viewport in either axis.
+  setInterval(() => {
+    try {
+      const el = frame.contentDocument.scrollingElement;
+      const over = el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1;
+      badge.textContent = over ? `OVERFLOW ${el.scrollWidth}×${el.scrollHeight} in ${el.clientWidth}×${el.clientHeight}` : "FIT";
+      badge.className = over ? "overflow" : "fit";
+    } catch { badge.textContent = "…"; badge.className = ""; }
+  }, 400);
+
+  apply();
+</script>
+</body>
+</html>

@@ -59,12 +59,16 @@ export interface BoardProps {
   legal: readonly Move[];
   canAct: boolean;
   onMove(move: Move): void;
+  /** "horizontal" (default): 8 cols × 3 rows, as the board is traditionally drawn.
+   *  "vertical": transposed to 3 cols × 8 rows, to suit a portrait/tall layout. */
+  orientation?: "horizontal" | "vertical";
 }
 
-export function Board({ state, legal, canAct, onMove }: BoardProps) {
+export function Board({ state, legal, canAct, onMove, orientation = "horizontal" }: BoardProps) {
   const layout = useMemo(() => getLayout(state.ruleset), [state.ruleset]);
   const occ = useMemo(() => occupancy(state), [state]);
   const [hovered, setHovered] = useState<Move | null>(null);
+  const vertical = orientation === "vertical";
 
   const moveForPiece = useMemo(() => {
     const map = new Map<string, Move>();
@@ -82,9 +86,31 @@ export function Board({ state, legal, canAct, onMove }: BoardProps) {
     return keys;
   }, [hovered, layout]);
 
+  // Transpose row/col for the vertical (portrait) orientation; the engine's
+  // row/col stay untouched so game-semantics checks below (e.g. shared lane)
+  // keep meaning "the middle lane", not "the middle of the screen".
+  const place = (row: number, col: number) =>
+    vertical ? { gridRow: col + 1, gridColumn: row + 1 } : { gridRow: row + 1, gridColumn: col + 1 };
+
   return (
-    <div className="board-frame rounded-2xl p-2 sm:p-3">
-      <div className="grid grid-cols-8 gap-1 sm:gap-1.5" role="grid" aria-label="Royal Game of Ur board">
+    <div
+      className="board-frame board-frame--fit rounded-2xl p-2 sm:p-3"
+      style={
+        {
+          "--bcols": vertical ? 3 : 8,
+          "--brows": vertical ? 8 : 3,
+          "--board-max-w": vertical ? "22rem" : "56rem",
+        } as React.CSSProperties
+      }
+    >
+      <div
+        className={[
+          "grid h-full w-full gap-1 sm:gap-1.5",
+          vertical ? "grid-cols-3 grid-rows-8" : "grid-cols-8 grid-rows-3",
+        ].join(" ")}
+        role="grid"
+        aria-label="Royal Game of Ur board"
+      >
         {layout.cells.map((info) => {
           const occupant = occ.get(info.key);
           const move = occupant ? moveForPiece.get(`${occupant.player}-${occupant.piece}`) : undefined;
@@ -103,12 +129,12 @@ export function Board({ state, legal, canAct, onMove }: BoardProps) {
               role="gridcell"
               aria-label={label}
               className={[
-                "tile relative aspect-square rounded-md",
+                "tile relative rounded-md",
                 info.cell.row === 1 ? "tile-lane" : "",
                 info.rosette ? "tile-rosette" : "",
                 isTarget ? "tile-target" : "",
               ].join(" ")}
-              style={{ gridColumn: info.cell.col + 1, gridRow: info.cell.row + 1 }}
+              style={place(info.cell.row, info.cell.col)}
             >
               <div className="absolute inset-0 flex items-center justify-center">
                 {info.rosette && !occupant ? <RosetteGlyph /> : null}
@@ -142,9 +168,7 @@ export function Board({ state, legal, canAct, onMove }: BoardProps) {
         })}
         {/* Notch placeholders keep the grid shape honest. */}
         {[0, 2].flatMap((row) =>
-          [4, 5].map((col) => (
-            <div key={`notch-${row}-${col}`} aria-hidden style={{ gridColumn: col + 1, gridRow: row + 1 }} />
-          )),
+          [4, 5].map((col) => <div key={`notch-${row}-${col}`} aria-hidden style={place(row, col)} />),
         )}
       </div>
     </div>

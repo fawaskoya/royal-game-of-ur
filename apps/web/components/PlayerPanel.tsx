@@ -33,7 +33,7 @@ export function PlayerPanel({ state, player, controller, active, entryMove, canA
   return (
     <div
       className={[
-        "flex items-center justify-between gap-3 rounded-xl px-3 py-2 sm:px-4",
+        "player-panel flex items-center justify-between gap-3 rounded-xl px-3 py-2 sm:px-4",
         active ? "bg-[var(--bg-raised)] ring-1 ring-[var(--gold-soft)]" : "",
       ].join(" ")}
     >
