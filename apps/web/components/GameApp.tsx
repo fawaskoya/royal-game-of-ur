@@ -8,6 +8,8 @@ import type { GameMode } from "@/lib/useGame";
 import { clearGame, loadGame } from "@/lib/persistence/gameStorage";
 import type { SavedGame } from "@/lib/persistence/saveSchema";
 import { Modal } from "./ui/Modal";
+import { HowToPlay } from "./HowToPlay";
+import { TutorialView } from "./TutorialView";
 import { SettingsPanel } from "./SettingsPanel";
 import { StatsPanel } from "./StatsPanel";
 
@@ -83,12 +85,18 @@ export function GameApp() {
   const [confirmBegin, setConfirmBegin] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [tutorialActive, setTutorialActive] = useState(false);
 
   // (Re)check for a saved game whenever the menu is showing — the game
   // auto-saves, so returning from a live game brings its save with it.
   useEffect(() => {
-    if (mode === null) setSaved(loadGame());
-  }, [mode]);
+    if (mode === null && !tutorialActive) setSaved(loadGame());
+  }, [mode, tutorialActive]);
+
+  if (tutorialActive) {
+    return <TutorialView onExit={() => setTutorialActive(false)} />;
+  }
 
   if (mode) {
     return (
@@ -214,16 +222,13 @@ export function GameApp() {
       </div>
 
       <div className="flex justify-center gap-2">
+        <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => setGuideOpen(true)}>
+          How to play
+        </button>
         <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => setStatsOpen(true)}>
           Stats
         </button>
-        <button
-          className="btn rounded-lg px-4 py-1.5 text-sm"
-          onClick={() => {
-            console.log("[debug] settings clicked");
-            setSettingsOpen(true);
-          }}
-        >
+        <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => setSettingsOpen(true)}>
           Settings
         </button>
       </div>
@@ -234,6 +239,11 @@ export function GameApp() {
 
       <StatsPanel open={statsOpen} onClose={() => setStatsOpen(false)} />
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <HowToPlay
+        open={guideOpen}
+        onClose={() => setGuideOpen(false)}
+        onStartTutorial={() => setTutorialActive(true)}
+      />
 
       <Modal
         open={confirmBegin}
