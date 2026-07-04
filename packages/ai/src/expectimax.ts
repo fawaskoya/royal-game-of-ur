@@ -24,6 +24,12 @@ export interface SearchOptions {
   /** Number of future rolls to consider. */
   readonly depth: number;
   readonly weights?: EvalWeights;
+  /**
+   * Forward pruning: at non-root move layers, recurse into only the top-K
+   * children by static evaluation (the mover's perspective). Buys extra
+   * depth for roughly constant cost; the root decision is never pruned.
+   */
+  readonly beamWidth?: number;
 }
 
 /** Value of a state (any phase) from `perspective`, searching `depth` rolls ahead. */
@@ -32,6 +38,7 @@ export function searchValue(
   depth: number,
   perspective: PlayerId,
   weights: EvalWeights = DEFAULT_WEIGHTS,
+  beamWidth = Infinity,
 ): number {
   if (state.winner !== null) {
     return state.winner === perspective ? WIN_SCORE - state.rollCount : -WIN_SCORE + state.rollCount;
@@ -39,7 +46,7 @@ export function searchValue(
   if (depth <= 0) return evaluate(state, perspective, weights);
 
   if (phaseOf(state) === "awaiting-move") {
-    return moveLayerValue(state, depth, perspective, weights);
+    return moveLayerValue(state, depth, perspective, weights, beamWidth);
   }
 
   // Chance layer: expectation over the next roll.
@@ -49,20 +56,37 @@ export function searchValue(
     const afterRoll = applyRoll(state, makeRoll(total, state.ruleset.diceCount));
     const value =
       phaseOf(afterRoll) === "awaiting-move"
-        ? moveLayerValue(afterRoll, depth, perspective, weights)
-        : searchValue(afterRoll, depth - 1, perspective, weights); // forced pass or game over
+        ? moveLayerValue(afterRoll, depth, perspective, weights, beamWidth)
+        : searchValue(afterRoll, depth - 1, perspective, weights, beamWidth); // forced pass or game over
     expected += dist[total]! * value;
   }
   return expected;
 }
 
-function moveLayerValue(state: GameState, depth: number, perspective: PlayerId, weights: EvalWeights): number {
+function moveLayerValue(
+  state: GameState,
+  depth: number,
+  perspective: PlayerId,
+  weights: EvalWeights,
+  beamWidth: number,
+): number {
   const moves = legalMoves(state);
   const maximizing = state.current === perspective;
+
+  let children = moves.map((move) => applyMove(state, move));
+  if (children.length > beamWidth) {
+    // Order by the mover's own static view and keep the beam. Decided games
+    // sort themselves to the front via the win score.
+    children = children
+      .map((child) => ({ child, bias: evaluate(child, state.current, weights) }))
+      .sort((a, b) => b.bias - a.bias)
+      .slice(0, beamWidth)
+      .map((entry) => entry.child);
+  }
+
   let best = maximizing ? -Infinity : Infinity;
-  for (const move of moves) {
-    const child = applyMove(state, move);
-    const value = searchValue(child, depth - 1, perspective, weights);
+  for (const child of children) {
+    const value = searchValue(child, depth - 1, perspective, weights, beamWidth);
     best = maximizing ? Math.max(best, value) : Math.min(best, value);
   }
   return best;
@@ -75,11 +99,12 @@ export function bestMove(state: GameState, options: SearchOptions): Move {
   if (moves.length === 1) return moves[0]!;
 
   const weights = options.weights ?? DEFAULT_WEIGHTS;
+  const beamWidth = options.beamWidth ?? Infinity;
   const perspective = state.current;
   let best = moves[0]!;
   let bestValue = -Infinity;
   for (const move of moves) {
-    const value = searchValue(applyMove(state, move), options.depth, perspective, weights);
+    const value = searchValue(applyMove(state, move), options.depth, perspective, weights, beamWidth);
     if (value > bestValue) {
       bestValue = value;
       best = move;

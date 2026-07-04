@@ -3,18 +3,22 @@ import { applyRoll, createGame, createRng, legalMoves, makeRoll } from "@ur/engi
 import { createAgent, DIFFICULTIES, playGame, bestMove } from "../src";
 
 describe("agent contract", () => {
-  it("every difficulty returns only legal moves and finishes full games", () => {
-    // playGame validates every move through the engine, which throws on any
-    // illegal choice — completing games is itself the legality proof.
-    for (const difficulty of DIFFICULTIES) {
-      const games = difficulty.id === "expert" ? 2 : 6;
-      for (let i = 0; i < games; i++) {
-        const result = playGame([difficulty.create(), createAgent("beginner")], 1000 + i);
-        expect([0, 1]).toContain(result.winner);
-        expect(result.rolls).toBeGreaterThan(10);
+  it(
+    "every difficulty returns only legal moves and finishes full games",
+    { timeout: 60_000 }, // search tiers think for real (master ≈ 150 ms/move)
+    () => {
+      // playGame validates every move through the engine, which throws on any
+      // illegal choice — completing games is itself the legality proof.
+      for (const difficulty of DIFFICULTIES) {
+        const games = difficulty.id === "master" ? 1 : difficulty.id === "expert" ? 2 : 6;
+        for (let i = 0; i < games; i++) {
+          const result = playGame([difficulty.create(), createAgent("beginner")], 1000 + i);
+          expect([0, 1]).toContain(result.winner);
+          expect(result.rolls).toBeGreaterThan(10);
+        }
       }
-    }
-  });
+    },
+  );
 
   it("agents are deterministic under a fixed rng", () => {
     const state = applyRoll(createGame(), makeRoll(2));

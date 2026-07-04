@@ -3,7 +3,7 @@
  * Difficulty comes from decision quality, never from cheating.
  */
 import { applyMove, type GameState, type Move, type Rng } from "@ur/engine";
-import { DEFAULT_WEIGHTS, evaluate, type EvalWeights } from "./eval";
+import { DEFAULT_WEIGHTS, MASTER_WEIGHTS, evaluate, type EvalWeights } from "./eval";
 import { bestMove } from "./expectimax";
 
 export interface AgentContext {
@@ -64,6 +64,22 @@ export function searchAgent(depth: number, weights: EvalWeights = DEFAULT_WEIGHT
     name: `Expectimax (depth ${depth})`,
     chooseMove(state, _moves, _context) {
       return bestMove(state, { depth, weights });
+    },
+  };
+}
+
+/**
+ * Master: depth-4 expectimax made affordable by beam pruning at inner move
+ * layers (top-3 children by static eval; the root is never pruned), plus the
+ * rosette-tempo evaluation term. One roll deeper than Expert at comparable
+ * think time.
+ */
+export function masterAgent(weights: EvalWeights = MASTER_WEIGHTS): UrAgent {
+  return {
+    id: "master",
+    name: "Master (beam expectimax, depth 4)",
+    chooseMove(state, _moves, _context) {
+      return bestMove(state, { depth: 4, beamWidth: 3, weights });
     },
   };
 }

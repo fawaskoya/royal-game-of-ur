@@ -1,11 +1,11 @@
 /**
- * The player-facing difficulty ladder. Five honest tiers ship today; the
- * spec's Master (MCTS) and Grandmaster (hybrid + learned eval) tiers are
- * designed in docs/AI_ENGINE.md and slot in here as new entries when built.
+ * The player-facing difficulty ladder. Six honest tiers; a future
+ * Grandmaster (MCTS/learned eval hybrid) is designed in docs/AI_ENGINE.md
+ * and slots in here as a new entry when built.
  */
-import { greedyAgent, randomAgent, searchAgent, type UrAgent } from "./agents";
+import { greedyAgent, masterAgent, randomAgent, searchAgent, type UrAgent } from "./agents";
 
-export type DifficultyId = "beginner" | "easy" | "medium" | "hard" | "expert";
+export type DifficultyId = "beginner" | "easy" | "medium" | "hard" | "expert" | "master";
 
 export interface DifficultyInfo {
   readonly id: DifficultyId;
@@ -44,6 +44,12 @@ export const DIFFICULTIES: readonly DifficultyInfo[] = [
     label: "Expert",
     description: "Deep expectimax search. Punishes loose pieces and wins tight races.",
     create: () => searchAgent(3),
+  },
+  {
+    id: "master",
+    label: "Master",
+    description: "Tournament strength: sharper risk judgement and deeper endgame calculation.",
+    create: () => masterAgent(),
   },
 ];
 
