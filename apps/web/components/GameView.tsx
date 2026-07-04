@@ -6,6 +6,7 @@ import type { GameEvent } from "@ur/engine";
 import { hintFor, type HintTag, type MoveAnalysis } from "@ur/ai";
 import { controllerOf, useGame, type GameMode } from "@/lib/useGame";
 import { useGameLayout } from "@/lib/useGameLayout";
+import { useSettings } from "@/lib/settings";
 import type { SavedGame } from "@/lib/persistence/saveSchema";
 import { Board } from "./Board";
 import { PlayerPanel } from "./PlayerPanel";
@@ -100,10 +101,12 @@ export function GameView({
   const game = useGame(mode, resume);
   const { state, legal, tail } = game;
   const { layout, isTouch, toggle: toggleLayout } = useGameLayout();
+  const { settings } = useSettings();
   const [confirmNew, setConfirmNew] = useState(false);
   const [showRestored, setShowRestored] = useState(game.restored);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [hint, setHint] = useState<MoveAnalysis | null>(null);
+  const hintsEnabled = settings.hints && mode.kind !== "watch";
 
   useEffect(() => {
     if (!showRestored) return;
@@ -115,14 +118,14 @@ export function GameView({
   useEffect(() => setHint(null), [state]);
 
   const requestNewGame = useCallback(() => {
-    if (state.history.length > 0 && state.winner === null) setConfirmNew(true);
+    if (settings.confirmNew && state.history.length > 0 && state.winner === null) setConfirmNew(true);
     else game.newGame();
-  }, [state.history.length, state.winner, game]);
+  }, [settings.confirmNew, state.history.length, state.winner, game]);
 
   const requestHint = useCallback(() => {
-    if (!game.humanCanMove) return;
+    if (!hintsEnabled || !game.humanCanMove) return;
     setHint(hintFor(state, { depth: 2 }));
-  }, [game.humanCanMove, state]);
+  }, [hintsEnabled, game.humanCanMove, state]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -161,7 +164,7 @@ export function GameView({
   }, [state.winner, state.history, state.rollCount, game.startedAt]);
 
   return (
-    <MotionConfig reducedMotion="user">
+    <MotionConfig reducedMotion={settings.motion === "reduced" ? "always" : "user"}>
       <div
         className={[
           "game-screen mx-auto flex w-full max-w-3xl flex-col gap-3 px-3 py-4 sm:gap-4 sm:py-6",
@@ -278,7 +281,7 @@ export function GameView({
                 humanCanRoll={game.humanCanRoll}
                 humanCanMove={game.humanCanMove}
                 hintText={hint ? hintText(hint) : null}
-                onHint={mode.kind === "watch" ? undefined : requestHint}
+                onHint={hintsEnabled ? requestHint : undefined}
                 onRoll={game.roll}
               />
             </div>

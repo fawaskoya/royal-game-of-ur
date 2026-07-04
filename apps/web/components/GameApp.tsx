@@ -8,6 +8,8 @@ import type { GameMode } from "@/lib/useGame";
 import { clearGame, loadGame } from "@/lib/persistence/gameStorage";
 import type { SavedGame } from "@/lib/persistence/saveSchema";
 import { Modal } from "./ui/Modal";
+import { SettingsPanel } from "./SettingsPanel";
+import { StatsPanel } from "./StatsPanel";
 
 type MenuChoice = "pvp" | "ai" | "watch";
 
@@ -79,6 +81,8 @@ export function GameApp() {
   const [saved, setSaved] = useState<SavedGame | null>(null);
   const [resume, setResume] = useState<SavedGame | undefined>(undefined);
   const [confirmBegin, setConfirmBegin] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // (Re)check for a saved game whenever the menu is showing — the game
   // auto-saves, so returning from a live game brings its save with it.
@@ -209,9 +213,27 @@ export function GameApp() {
         </button>
       </div>
 
+      <div className="flex justify-center gap-2">
+        <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => setStatsOpen(true)}>
+          Stats
+        </button>
+        <button
+          className="btn rounded-lg px-4 py-1.5 text-sm"
+          onClick={() => {
+            console.log("[debug] settings clicked");
+            setSettingsOpen(true);
+          }}
+        >
+          Settings
+        </button>
+      </div>
+
       <footer className="text-center text-xs text-[var(--ink-dim)]">
         Classic Irving Finkel rules · British Museum reconstruction
       </footer>
+
+      <StatsPanel open={statsOpen} onClose={() => setStatsOpen(false)} />
+      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
       <Modal
         open={confirmBegin}

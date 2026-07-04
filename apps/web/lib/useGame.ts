@@ -21,6 +21,7 @@ import {
 import { createAgent, type DifficultyId, type UrAgent } from "@ur/ai";
 import { clearGame, saveGame } from "@/lib/persistence/gameStorage";
 import { CURRENT_SAVE_VERSION, type SavedGame } from "@/lib/persistence/saveSchema";
+import { recordResult, resultFromGame } from "@/lib/stats/matchResults";
 
 export type GameMode =
   | { kind: "pvp" }
@@ -154,6 +155,19 @@ export function useGame(mode: GameMode, resume?: SavedGame): UseGameResult {
     clearGame();
     setSnapshot({ state: sessionRef.current.state, tail: [] });
   }, []);
+
+  // Finished games become a MatchResult exactly once (stats store).
+  const recordedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (state.winner === null) return;
+    const meta = metaRef.current!;
+    if (recordedRef.current === meta.gameId) return;
+    const result = resultFromGame(state, mode, meta.gameId, meta.startedAt);
+    if (result) {
+      recordResult(result);
+      recordedRef.current = meta.gameId;
+    }
+  }, [state, mode]);
 
   // Auto-save after every state change. An untouched game equals a fresh
   // one, and finished games leave the active slot — both clear the save.

@@ -2,25 +2,27 @@
 
 /**
  * Layout mode ("vertical" stack vs "horizontal" board+sidebar) is orthogonal
- * to viewport width. Touch devices (phones/tablets) follow the OS rotation —
- * portrait maps to vertical, landscape to horizontal — with no manual
- * control. Non-touch (desktop/laptop) devices default to vertical and expose
- * a toggle, persisted across sessions.
- *
- * `?layout=vertical|horizontal` forces the initial layout (never persisted).
- * Test-only escape hatch for the viewport lab, where per-iframe touch and
- * orientation media queries can't be faked. See .agent/DECISIONS.md.
+ * to viewport width. Resolution order:
+ *   1. `?layout=` URL override — test-only (viewport lab), never persisted.
+ *   2. Settings orientation "vertical"/"horizontal" — user pinned it.
+ *   3. "auto": touch devices follow OS rotation (portrait→vertical,
+ *      landscape→horizontal, no toggle); desktops use the header toggle,
+ *      which pins the choice into settings.
  */
 import { useCallback, useEffect, useState } from "react";
+import { loadSettings, saveSettings } from "@/lib/settings";
 
 export type GameLayout = "vertical" | "horizontal";
-
-const STORAGE_KEY = "ur-layout";
 
 function forcedLayout(): GameLayout | null {
   if (typeof window === "undefined") return null;
   const value = new URLSearchParams(window.location.search).get("layout");
   return value === "vertical" || value === "horizontal" ? value : null;
+}
+
+function pinnedLayout(): GameLayout | null {
+  const orientation = loadSettings().orientation;
+  return orientation === "auto" ? null : orientation;
 }
 
 function isTouchDevice(): boolean {
@@ -36,11 +38,10 @@ function isLandscape(): boolean {
 export function useGameLayout(): { layout: GameLayout; isTouch: boolean; toggle(): void } {
   const [isTouch, setIsTouch] = useState(isTouchDevice);
   const [layout, setLayout] = useState<GameLayout>(() => {
-    const forced = forcedLayout();
-    if (forced) return forced;
+    const fixed = forcedLayout() ?? pinnedLayout();
+    if (fixed) return fixed;
     if (isTouchDevice()) return isLandscape() ? "horizontal" : "vertical";
-    if (typeof window === "undefined") return "vertical";
-    return window.localStorage.getItem(STORAGE_KEY) === "horizontal" ? "horizontal" : "vertical";
+    return "vertical";
   });
 
   useEffect(() => {
@@ -50,8 +51,9 @@ export function useGameLayout(): { layout: GameLayout; isTouch: boolean; toggle(
     return () => touchQuery.removeEventListener("change", onTouchChange);
   }, []);
 
+  // Auto mode on touch: follow the device's physical rotation live.
   useEffect(() => {
-    if (!isTouch || forcedLayout()) return;
+    if (!isTouch || forcedLayout() || pinnedLayout()) return;
     const orientationQuery = window.matchMedia("(orientation: landscape)");
     const apply = (matches: boolean) => setLayout(matches ? "horizontal" : "vertical");
     apply(orientationQuery.matches);
@@ -60,10 +62,22 @@ export function useGameLayout(): { layout: GameLayout; isTouch: boolean; toggle(
     return () => orientationQuery.removeEventListener("change", onOrientationChange);
   }, [isTouch]);
 
+  // Settings panel changes (orientation pinned/unpinned) apply live.
+  useEffect(() => {
+    const onSettings = () => {
+      const fixed = forcedLayout() ?? pinnedLayout();
+      if (fixed) setLayout(fixed);
+      else if (isTouchDevice()) setLayout(isLandscape() ? "horizontal" : "vertical");
+    };
+    window.addEventListener("ur:settings-changed", onSettings);
+    return () => window.removeEventListener("ur:settings-changed", onSettings);
+  }, []);
+
   const toggle = useCallback(() => {
     setLayout((prev) => {
       const next: GameLayout = prev === "vertical" ? "horizontal" : "vertical";
-      window.localStorage.setItem(STORAGE_KEY, next);
+      // Desktop toggle pins the orientation (settings survive reloads).
+      saveSettings({ ...loadSettings(), orientation: next });
       return next;
     });
   }, []);
