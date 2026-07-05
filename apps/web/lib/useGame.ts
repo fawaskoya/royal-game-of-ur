@@ -21,6 +21,7 @@ import {
 import { createAgent, type DifficultyId, type UrAgent } from "@ur/ai";
 import { clearGame, saveGame } from "@/lib/persistence/gameStorage";
 import { CURRENT_SAVE_VERSION, type SavedGame } from "@/lib/persistence/saveSchema";
+import { archiveGame } from "@/lib/archive";
 import { recordResult, resultFromGame } from "@/lib/stats/matchResults";
 
 export type GameMode =
@@ -61,6 +62,8 @@ export interface UseGameResult {
   restored: boolean;
   /** ISO timestamp of when the current game began. */
   startedAt: string;
+  /** Stable id of the current game (matches MatchResult/archive entries). */
+  gameId: string;
   roll(): void;
   movePiece(move: Move): void;
   undo(): void;
@@ -156,7 +159,8 @@ export function useGame(mode: GameMode, resume?: SavedGame): UseGameResult {
     setSnapshot({ state: sessionRef.current.state, tail: [] });
   }, []);
 
-  // Finished games become a MatchResult exactly once (stats store).
+  // Finished games become a MatchResult (stats) and an archived replay,
+  // exactly once per game.
   const recordedRef = useRef<string | null>(null);
   useEffect(() => {
     if (state.winner === null) return;
@@ -165,6 +169,7 @@ export function useGame(mode: GameMode, resume?: SavedGame): UseGameResult {
     const result = resultFromGame(state, mode, meta.gameId, meta.startedAt);
     if (result) {
       recordResult(result);
+      archiveGame(state, mode, meta.gameId);
       recordedRef.current = meta.gameId;
     }
   }, [state, mode]);
@@ -227,6 +232,7 @@ export function useGame(mode: GameMode, resume?: SavedGame): UseGameResult {
     canUndo: mode.kind !== "watch" && state.history.length > 0 && !aiTurn,
     restored: restoredRef.current,
     startedAt: metaRef.current.startedAt,
+    gameId: metaRef.current.gameId,
     roll,
     movePiece,
     undo,

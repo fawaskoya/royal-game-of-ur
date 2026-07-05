@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { DIFFICULTIES } from "@ur/ai";
 import { clearResults, loadResults, summarizeStats } from "@/lib/stats/matchResults";
+import { trainingRating } from "@/lib/rating/training";
 import { Modal } from "./ui/Modal";
 
 function formatMs(ms: number | null): string {
@@ -14,14 +15,18 @@ function formatMs(ms: number | null): string {
 
 export function StatsPanel({ open, onClose }: { open: boolean; onClose(): void }) {
   const [generation, setGeneration] = useState(0);
-  const summary = useMemo(() => {
+  const data = useMemo(() => {
     void generation; // recompute after Clear
-    return open ? summarizeStats(loadResults()) : null;
+    if (!open) return null;
+    const results = loadResults();
+    return { summary: summarizeStats(results), rating: trainingRating(results) };
   }, [open, generation]);
 
-  if (!summary) return null;
+  if (!data) return null;
+  const { summary, rating } = data;
 
   const rows: [string, string][] = [
+    ["Training rating*", rating.games > 0 ? String(rating.current) : "—"],
     ["Games vs AI", String(summary.games)],
     ["Wins · Losses", `${summary.wins} · ${summary.losses}`],
     ["Win rate", summary.games > 0 ? `${Math.round(summary.winRate * 100)}%` : "—"],
@@ -70,6 +75,10 @@ export function StatsPanel({ open, onClose }: { open: boolean; onClose(): void }
               </div>
             ))}
           </div>
+          <p className="text-xs text-[var(--ink-dim)]">
+            *Local, unranked — Elo against fixed per-tier anchor ratings on this device only.
+            Real rankings arrive with online play.
+          </p>
           <div>
             <div className="mb-1 text-xs uppercase tracking-widest text-[var(--ink-dim)]">
               By difficulty

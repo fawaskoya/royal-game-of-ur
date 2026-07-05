@@ -9,6 +9,8 @@ import { useGameLayout } from "@/lib/useGameLayout";
 import { useSettings } from "@/lib/settings";
 import { describeEvent } from "@/lib/describeEvent";
 import { sfx } from "@/lib/sound";
+import { loadResults } from "@/lib/stats/matchResults";
+import { trainingRating, type TrainingRating } from "@/lib/rating/training";
 import type { SavedGame } from "@/lib/persistence/saveSchema";
 import { Board } from "./Board";
 import { PlayerPanel } from "./PlayerPanel";
@@ -89,8 +91,27 @@ export function GameView({
   const [showRestored, setShowRestored] = useState(game.restored);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [replayOpen, setReplayOpen] = useState(false);
+  const [replayAnalyze, setReplayAnalyze] = useState(false);
+  const [rating, setRating] = useState<TrainingRating | null>(null);
   const [hint, setHint] = useState<MoveAnalysis | null>(null);
   const hintsEnabled = settings.hints && mode.kind !== "watch";
+
+  // Training rating updates once the finished game's result lands in the
+  // store (the recording effect runs in the same commit; the small delay
+  // orders us safely after it).
+  useEffect(() => {
+    if (state.winner === null || mode.kind !== "ai") {
+      setRating(null);
+      return;
+    }
+    const timer = setTimeout(() => {
+      const results = loadResults();
+      if (results[results.length - 1]?.gameId === game.gameId) {
+        setRating(trainingRating(results));
+      }
+    }, 80);
+    return () => clearTimeout(timer);
+  }, [state.winner, mode.kind, game.gameId]);
 
   useEffect(() => {
     if (!showRestored) return;
@@ -379,17 +400,41 @@ export function GameView({
                   <span className="text-right">
                     ☀ {winStats.rosettes[0]} · ☾ {winStats.rosettes[1]}
                   </span>
+                  {rating && rating.lastDelta !== null ? (
+                    <>
+                      <span className="text-[var(--ink-dim)]">Training rating</span>
+                      <span className="text-right">
+                        {rating.current}{" "}
+                        <span className={rating.lastDelta >= 0 ? "text-[var(--gold)]" : "text-[var(--danger)]"}>
+                          ({rating.lastDelta >= 0 ? "+" : ""}
+                          {rating.lastDelta})
+                        </span>
+                      </span>
+                    </>
+                  ) : null}
                 </div>
 
                 <div className="mt-6 flex flex-wrap justify-center gap-3">
                   <button className="btn btn-primary rounded-lg px-5 py-2 text-sm" onClick={game.newGame}>
                     Play again
                   </button>
-                  <button className="btn rounded-lg px-5 py-2 text-sm" onClick={() => setReplayOpen(true)}>
-                    View replay
+                  <button
+                    className="btn rounded-lg px-5 py-2 text-sm"
+                    onClick={() => {
+                      setReplayAnalyze(true);
+                      setReplayOpen(true);
+                    }}
+                  >
+                    Analyze
                   </button>
-                  <button className="btn rounded-lg px-5 py-2 text-sm" onClick={() => setHistoryOpen(true)}>
-                    History
+                  <button
+                    className="btn rounded-lg px-5 py-2 text-sm"
+                    onClick={() => {
+                      setReplayAnalyze(false);
+                      setReplayOpen(true);
+                    }}
+                  >
+                    Replay
                   </button>
                   <button className="btn rounded-lg px-5 py-2 text-sm" onClick={onExit}>
                     Menu
@@ -426,7 +471,11 @@ export function GameView({
 
         <AnimatePresence>
           {replayOpen && state.winner !== null ? (
-            <ReplayViewer replay={exportReplay(state, { mode })} onClose={() => setReplayOpen(false)} />
+            <ReplayViewer
+              replay={exportReplay(state, { mode })}
+              autoAnalyze={replayAnalyze}
+              onClose={() => setReplayOpen(false)}
+            />
           ) : null}
         </AnimatePresence>
       </div>

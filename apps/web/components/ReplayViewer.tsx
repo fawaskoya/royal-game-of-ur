@@ -1,13 +1,29 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "framer-motion";
 import { replayStateAt, type Replay } from "@ur/engine";
 import { describeEvent } from "@/lib/describeEvent";
+import { analyzeGameAsync, type GameAnalysis, type MoveClassification, type MoveGrade } from "@/lib/analysis";
 import { Board } from "./Board";
 import { PlayerPanel } from "./PlayerPanel";
 
 const AUTOPLAY_MS = 900;
+
+const GRADE_LABEL: Record<MoveClassification, string> = {
+  best: "Best move",
+  good: "Good",
+  inaccuracy: "Inaccuracy",
+  mistake: "Mistake",
+  blunder: "Blunder",
+};
+
+const GRADE_GLYPH: Record<MoveClassification, string> = {
+  best: "★",
+  good: "✓",
+  inaccuracy: "?!",
+  mistake: "?",
+  blunder: "??",
+};
 
 function downloadReplay(replay: Replay): void {
   const blob = new Blob([JSON.stringify(replay, null, 2)], { type: "application/json" });
@@ -21,14 +37,54 @@ function downloadReplay(replay: Replay): void {
   URL.revokeObjectURL(url);
 }
 
-/** Read-only playback of a finished (or in-progress) game's event log — scrub, autoplay, export. */
-export function ReplayViewer({ replay, onClose }: { replay: Replay; onClose(): void }) {
+/** Read-only playback of a game's event log — scrub, autoplay, export, and
+ * hint-engine analysis (accuracy, key moments) on demand. */
+export function ReplayViewer({
+  replay,
+  onClose,
+  autoAnalyze = false,
+}: {
+  replay: Replay;
+  onClose(): void;
+  autoAnalyze?: boolean;
+}) {
   const [index, setIndex] = useState(replay.events.length);
   const [playing, setPlaying] = useState(false);
+  const [analysis, setAnalysis] = useState<GameAnalysis | null>(null);
+  const [progress, setProgress] = useState<[number, number] | null>(null);
+  const [momentsOpen, setMomentsOpen] = useState(false);
+  const analysisStarted = useRef(false);
   const total = replay.events.length;
 
   const state = useMemo(() => replayStateAt(replay, index), [replay, index]);
   const currentEvent = index > 0 ? replay.events[index - 1] : null;
+
+  // Grade attached to the event we just stepped past, if it was a decision.
+  const gradeByEvent = useMemo(() => {
+    const map = new Map<number, MoveGrade>();
+    for (const grade of analysis?.grades ?? []) map.set(grade.eventIndex, grade);
+    return map;
+  }, [analysis]);
+  const currentGrade = index > 0 ? gradeByEvent.get(index - 1) : undefined;
+
+  const startAnalysis = () => {
+    if (analysisStarted.current) return;
+    analysisStarted.current = true;
+    setProgress([0, 1]);
+    void analyzeGameAsync(replay, {
+      depth: 2,
+      onProgress: (done, all) => setProgress([done, all]),
+    }).then((result) => {
+      setAnalysis(result);
+      setProgress(null);
+      setMomentsOpen(result.keyMoments.length > 0);
+    });
+  };
+
+  useEffect(() => {
+    if (autoAnalyze) startAnalysis();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoAnalyze]);
 
   useEffect(() => {
     if (!playing) return;
@@ -40,13 +96,10 @@ export function ReplayViewer({ replay, onClose }: { replay: Replay; onClose(): v
     return () => clearTimeout(timer);
   }, [playing, index, total]);
 
-  const scrubberRef = useRef<HTMLInputElement>(null);
-
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+    // Deliberately unanimated: a full-screen opaque view that fades can get
+    // stuck mid-fade if the tab is backgrounded while mounting.
+    <div
       className="fixed inset-0 z-50 flex flex-col bg-[var(--bg)]"
       role="dialog"
       aria-modal="true"
@@ -57,10 +110,41 @@ export function ReplayViewer({ replay, onClose }: { replay: Replay; onClose(): v
           ‹ Close
         </button>
         <h1 className="font-display text-lg text-[var(--gold)]">Replay</h1>
-        <button className="btn rounded-lg px-3 py-1.5 text-sm" onClick={() => downloadReplay(replay)}>
-          Export
-        </button>
+        <div className="flex gap-2">
+          {analysis === null ? (
+            <button
+              className="btn rounded-lg px-3 py-1.5 text-sm"
+              disabled={progress !== null}
+              onClick={startAnalysis}
+            >
+              {progress ? `Analyzing ${progress[0]}/${progress[1]}…` : "Analyze"}
+            </button>
+          ) : (
+            <button className="btn rounded-lg px-3 py-1.5 text-sm" onClick={() => setMomentsOpen((v) => !v)}>
+              {momentsOpen ? "Hide moments" : "Key moments"}
+            </button>
+          )}
+          <button className="btn rounded-lg px-3 py-1.5 text-sm" onClick={() => downloadReplay(replay)}>
+            Export
+          </button>
+        </div>
       </header>
+
+      {analysis ? (
+        <div className="mx-4 mb-1 flex flex-wrap items-center justify-center gap-x-6 gap-y-1 rounded-xl bg-[var(--bg-raised)] px-4 py-2 text-sm">
+          {([0, 1] as const).map((player) => (
+            <span key={player} className="flex items-center gap-2">
+              <span className="text-[var(--ink-dim)]">{player === 0 ? "☀ Light" : "☾ Dark"}</span>
+              <span className="font-display text-lg text-[var(--gold)]">
+                {analysis.accuracy[player] === null ? "—" : `${analysis.accuracy[player]}%`}
+              </span>
+              <span className="text-xs text-[var(--ink-dim)]">
+                {analysis.counts[player].mistake} ? · {analysis.counts[player].blunder} ??
+              </span>
+            </span>
+          ))}
+        </div>
+      ) : null}
 
       <div className="game-grid min-h-0 flex-1 px-3 pb-2" data-layout="vertical">
         <div className="ga-dark">
@@ -74,8 +158,42 @@ export function ReplayViewer({ replay, onClose }: { replay: Replay; onClose(): v
             onMove={() => undefined}
           />
         </div>
-        <div className="ga-board">
+        <div className="ga-board relative">
           <Board state={state} legal={[]} canAct={false} onMove={() => undefined} orientation="vertical" />
+          {momentsOpen && analysis ? (
+            <div className="absolute inset-y-0 right-0 flex w-64 max-w-[70%] flex-col rounded-xl border border-[var(--frame-edge)] bg-[var(--bg-raised)]/95">
+              <div className="border-b border-[var(--frame-edge)] px-3 py-2 text-sm text-[var(--gold)]">
+                Key moments
+              </div>
+              <ol className="flex-1 overflow-y-auto px-3 py-2 text-xs">
+                {analysis.keyMoments.length === 0 ? (
+                  <li className="text-[var(--ink-dim)]">No mistakes or blunders — clean game.</li>
+                ) : (
+                  analysis.keyMoments.map((moment) => (
+                    <li key={moment.eventIndex}>
+                      <button
+                        className="w-full rounded px-1 py-1.5 text-left hover:bg-black/20"
+                        onClick={() => {
+                          setPlaying(false);
+                          setIndex(moment.eventIndex + 1);
+                        }}
+                      >
+                        <span className={moment.classification === "blunder" ? "text-[var(--danger)]" : "text-[var(--gold)]"}>
+                          {GRADE_GLYPH[moment.classification]}
+                        </span>{" "}
+                        <span className="text-[var(--ink)]">
+                          T{moment.turn} {moment.player === 0 ? "Light" : "Dark"}
+                        </span>{" "}
+                        <span className="text-[var(--ink-dim)]">
+                          {moment.played.from}→{moment.played.to} (best {moment.best.from}→{moment.best.to})
+                        </span>
+                      </button>
+                    </li>
+                  ))
+                )}
+              </ol>
+            </div>
+          ) : null}
         </div>
         <div className="ga-light">
           <PlayerPanel
@@ -94,6 +212,20 @@ export function ReplayViewer({ replay, onClose }: { replay: Replay; onClose(): v
               {currentEvent
                 ? `${index}/${total} — ${describeEvent(currentEvent)}`
                 : `0/${total} — start of game`}
+              {currentGrade ? (
+                <span
+                  className={
+                    currentGrade.classification === "mistake" || currentGrade.classification === "blunder"
+                      ? "ml-2 text-[var(--danger)]"
+                      : "ml-2 text-[var(--gold)]"
+                  }
+                >
+                  {GRADE_GLYPH[currentGrade.classification]} {GRADE_LABEL[currentGrade.classification]}
+                  {currentGrade.classification !== "best"
+                    ? ` — best was ${currentGrade.best.from === 0 ? "entering" : currentGrade.best.from}→${currentGrade.best.to}`
+                    : ""}
+                </span>
+              ) : null}
             </p>
             <div className="flex items-center gap-3">
               <button
@@ -108,7 +240,6 @@ export function ReplayViewer({ replay, onClose }: { replay: Replay; onClose(): v
                 ‹
               </button>
               <input
-                ref={scrubberRef}
                 type="range"
                 min={0}
                 max={total}
@@ -144,6 +275,6 @@ export function ReplayViewer({ replay, onClose }: { replay: Replay; onClose(): v
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
