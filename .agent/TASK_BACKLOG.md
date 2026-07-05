@@ -28,10 +28,11 @@ Live backlog for the agentic campaign. Engineering-level backlog per subsystem l
 
 ## Low
 
-- [ ] Light/parchment theme — tokens exist in globals.css
-- [ ] Sound design pass (+ settings toggle)
-- [ ] Replay viewer UI (engine support already exists)
+- [x] Light/parchment theme — 2026-07-05 (page chrome only; board tokens unchanged in both themes)
+- [x] Sound design pass (+ settings toggle) — 2026-07-05 (synthesized WebAudio sfx, no assets)
+- [x] Replay viewer UI — 2026-07-05 (scrub/play/export from win overlay + menu file import)
 - [ ] Full-ladder `pnpm bench` re-run including Master (long: ~150ms/move); record in AI_ENGINE.md
+- [ ] Board texture/lighting pass — grain overlay shipped 2026-07-05; a fuller lighting pass remains open
 
 ## Future
 

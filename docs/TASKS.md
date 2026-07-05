@@ -20,15 +20,15 @@ Live, per-subsystem. Keep entries actionable; move finished items to the bottom 
 
 ## web
 
-- [ ] Dice tetrahedra visuals + roll-speed setting (basic tumble shipped 2026-07-04)
-- [ ] Sound pass + settings (mute, minimalist)
-- [ ] Light/parchment theme via existing CSS tokens
+- [x] Dice tetrahedra visuals + roll-speed setting — shipped 2026-07-05 (SVG pyramid silhouette; physics/quick/instant via Settings, rotation always a multiple of 360° so it settles upright)
+- [x] Sound pass + settings (mute, minimalist) — shipped 2026-07-05 (synthesized WebAudio: roll/move/capture/rosette/win; on/off in Settings)
+- [x] Light/parchment theme via existing CSS tokens — shipped 2026-07-05 (`data-theme="light"` on `<html>`, page chrome only)
 - [x] Interactive tutorial mode — shipped 2026-07-05 (+ How-to-play guide)
-- [ ] Replay viewer (timeline scrub over `replayStateAt`, import/export files)
+- [x] Replay viewer (timeline scrub over `replayStateAt`, import/export files) — shipped 2026-07-05 (win-overlay "View replay" + menu "View a replay" file import; export downloads the replay JSON)
 - [x] Auto-save/resume local games — shipped 2026-07-04 (versioned save over `ur-session@1`)
 - [x] Statistics page — shipped 2026-07-05 (MatchResult store + Stats panel)
 - [x] Keyboard shortcuts + live-region announcements — R/H/U/N/Esc shipped 2026-07-04 (piece-selection arrow-key polish still open)
-- [ ] Board texture/lighting pass
+- [ ] Board texture/lighting pass — subtle SVG-noise grain overlay on the board frame shipped 2026-07-05; a fuller lighting pass remains open
 
 ## infra
 

@@ -1,8 +1,11 @@
 @import "tailwindcss";
 
-/* Design tokens — see docs/UI_UX.md. Components must use these, never raw colors. */
+/* Design tokens — see docs/UI_UX.md. Components must use these, never raw colors.
+   The board itself (--frame/--tile/--piece tokens) reads as wood + ivory/parchment
+   in both themes and does not change — only the surrounding page chrome does. */
 :root {
   --bg: #0b0e14;
+  --bg-glow: #141a26;
   --bg-raised: #12161f;
   --frame: #1a1610;
   --frame-edge: #8a6f3a;
@@ -21,6 +24,16 @@
   --danger-soft: rgba(180, 84, 62, 0.55);
 }
 
+/* Light/parchment theme (Settings → Theme). Page chrome turns to warm paper;
+   the board's own tokens are untouched (see note above). */
+:root[data-theme="light"] {
+  --bg: #f3ead5;
+  --bg-glow: #fffbf0;
+  --bg-raised: #e8dbb8;
+  --ink: #2b2416;
+  --ink-dim: #6d6046;
+}
+
 /* Keyboard focus is always visible, everywhere, in brand gold. */
 :focus-visible {
   outline: 2px solid var(--gold);
@@ -37,7 +50,8 @@ body {
 
 body {
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  background-image: radial-gradient(ellipse 90% 60% at 50% -10%, #141a26 0%, var(--bg) 60%);
+  background-image: radial-gradient(ellipse 90% 60% at 50% -10%, var(--bg-glow) 0%, var(--bg) 60%);
+  transition: background-color 200ms ease, color 200ms ease;
 }
 
 .font-display {
@@ -46,11 +60,25 @@ body {
 }
 
 .board-frame {
+  position: relative;
   background: linear-gradient(160deg, #201a12 0%, var(--frame) 55%, #14100b 100%);
   border: 1px solid var(--frame-edge);
   box-shadow:
     0 24px 60px rgba(0, 0, 0, 0.55),
     inset 0 1px 0 rgba(255, 235, 190, 0.08);
+}
+
+/* A whisper of grain so the frame reads as worked wood, not a flat gradient.
+   Pure decoration: pointer-events none, low opacity, overlay blend. */
+.board-frame::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 .tile {

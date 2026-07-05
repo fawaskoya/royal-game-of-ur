@@ -104,6 +104,40 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose(): voi
             onChange={(motion) => update({ motion })}
           />
         </Row>
+        <Row label="Dice speed">
+          <Segmented<Settings["diceSpeed"]>
+            label="Dice speed"
+            value={settings.diceSpeed}
+            options={[
+              { id: "physics", label: "Physics" },
+              { id: "quick", label: "Quick" },
+              { id: "instant", label: "Instant" },
+            ]}
+            onChange={(diceSpeed) => update({ diceSpeed })}
+          />
+        </Row>
+        <Row label="Sound">
+          <Segmented<"on" | "off">
+            label="Sound"
+            value={settings.sound ? "on" : "off"}
+            options={[
+              { id: "on", label: "On" },
+              { id: "off", label: "Off" },
+            ]}
+            onChange={(v) => update({ sound: v === "on" })}
+          />
+        </Row>
+        <Row label="Theme">
+          <Segmented<Settings["theme"]>
+            label="Theme"
+            value={settings.theme}
+            options={[
+              { id: "dark", label: "Dark" },
+              { id: "light", label: "Light" },
+            ]}
+            onChange={(theme) => update({ theme })}
+          />
+        </Row>
         <p className="pt-2 text-xs text-[var(--ink-dim)]">
           Auto orientation follows your device rotation on touch screens and the header toggle on
           desktop. {DIFFICULTIES.length} AI tiers available — pick per game from the menu.

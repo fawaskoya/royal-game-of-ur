@@ -23,6 +23,12 @@ export interface Settings {
   readonly confirmNew: boolean;
   /** "system" respects prefers-reduced-motion; "reduced" always reduces. */
   readonly motion: "system" | "reduced";
+  /** Dice tumble: full spring, a faster settle, or an immediate result. */
+  readonly diceSpeed: "physics" | "quick" | "instant";
+  /** Short synthesized sound effects (roll, move, capture, rosette, win). */
+  readonly sound: boolean;
+  /** "light" = parchment palette for the page chrome; the board stays wood/ivory in both. */
+  readonly theme: "dark" | "light";
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -30,8 +36,17 @@ export const DEFAULT_SETTINGS: Settings = {
   hints: true,
   confirmNew: true,
   motion: "system",
+  diceSpeed: "physics",
+  sound: true,
+  theme: "dark",
 };
 
+/**
+ * All fields are read individually with a safe fallback, so adding a field
+ * here (as above) never needs a version bump or migration — an old stored
+ * payload just gets the new field's default. Only a field *shape* change
+ * (not a new field) would need SETTINGS_VERSION bumped + a migration.
+ */
 export function loadSettings(): Settings {
   try {
     if (typeof window === "undefined") return DEFAULT_SETTINGS;
@@ -47,6 +62,9 @@ export function loadSettings(): Settings {
       hints: typeof s.hints === "boolean" ? s.hints : DEFAULT_SETTINGS.hints,
       confirmNew: typeof s.confirmNew === "boolean" ? s.confirmNew : DEFAULT_SETTINGS.confirmNew,
       motion: s.motion === "reduced" ? "reduced" : "system",
+      diceSpeed: s.diceSpeed === "quick" || s.diceSpeed === "instant" ? s.diceSpeed : "physics",
+      sound: typeof s.sound === "boolean" ? s.sound : DEFAULT_SETTINGS.sound,
+      theme: s.theme === "light" ? "light" : "dark",
     };
   } catch {
     return DEFAULT_SETTINGS;

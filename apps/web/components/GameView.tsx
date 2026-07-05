@@ -2,36 +2,19 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, LayoutGroup, MotionConfig, motion } from "framer-motion";
-import type { GameEvent } from "@ur/engine";
+import { exportReplay, type GameEvent } from "@ur/engine";
 import { hintFor, type HintTag, type MoveAnalysis } from "@ur/ai";
 import { controllerOf, useGame, type GameMode } from "@/lib/useGame";
 import { useGameLayout } from "@/lib/useGameLayout";
 import { useSettings } from "@/lib/settings";
+import { describeEvent } from "@/lib/describeEvent";
+import { sfx } from "@/lib/sound";
 import type { SavedGame } from "@/lib/persistence/saveSchema";
 import { Board } from "./Board";
 import { PlayerPanel } from "./PlayerPanel";
 import { DiceTray } from "./DiceTray";
 import { Modal } from "./ui/Modal";
-
-function describe(event: GameEvent): string {
-  const who = event.player === 0 ? "Light" : "Dark";
-  switch (event.type) {
-    case "roll":
-      return `${who} rolled ${event.total}.`;
-    case "pass":
-      return `${who} ${event.reason === "rolled-zero" ? "rolled a zero" : "had no legal moves"}; turn passes.`;
-    case "move":
-      return [
-        `${who} ${event.from === 0 ? "entered a piece" : `moved from square ${event.from}`} ${
-          event.finished ? "home" : `to square ${event.to}`
-        }.`,
-        event.capture ? "Captured an opponent piece." : "",
-        event.extraTurn ? "Rosette: rolls again." : "",
-      ]
-        .filter(Boolean)
-        .join(" ");
-  }
-}
+import { ReplayViewer } from "./ReplayViewer";
 
 const HINT_COPY: Record<HintTag, string> = {
   capture: "captures an opponent piece",
@@ -105,6 +88,7 @@ export function GameView({
   const [confirmNew, setConfirmNew] = useState(false);
   const [showRestored, setShowRestored] = useState(game.restored);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [replayOpen, setReplayOpen] = useState(false);
   const [hint, setHint] = useState<MoveAnalysis | null>(null);
   const hintsEnabled = settings.hints && mode.kind !== "watch";
 
@@ -113,6 +97,24 @@ export function GameView({
     const timer = setTimeout(() => setShowRestored(false), 2600);
     return () => clearTimeout(timer);
   }, [showRestored]);
+
+  // Sound effects follow the same event tail everything else narrates from —
+  // one event, one sound, most-significant-first (a capturing rosette plays
+  // as a capture, not both).
+  useEffect(() => {
+    if (state.winner !== null && tail.some((e) => e.type === "move")) {
+      sfx.win();
+      return;
+    }
+    const move = tail.find((e) => e.type === "move");
+    if (move) {
+      if (move.capture) sfx.capture();
+      else if (move.extraTurn) sfx.rosette();
+      else sfx.move();
+      return;
+    }
+    if (tail.some((e) => e.type === "roll")) sfx.roll();
+  }, [tail, state.winner]);
 
   // A hint describes one exact position — any state change invalidates it.
   useEffect(() => setHint(null), [state]);
@@ -282,6 +284,7 @@ export function GameView({
                 humanCanMove={game.humanCanMove}
                 hintText={hint ? hintText(hint) : null}
                 onHint={hintsEnabled ? requestHint : undefined}
+                diceSpeed={settings.diceSpeed}
                 onRoll={game.roll}
               />
             </div>
@@ -290,7 +293,7 @@ export function GameView({
 
         {/* Screen-reader narration of every action. */}
         <div aria-live="polite" className="sr-only">
-          {tail.map(describe).join(" ")}
+          {tail.map(describeEvent).join(" ")}
         </div>
 
         {/* Move history drawer */}
@@ -378,9 +381,12 @@ export function GameView({
                   </span>
                 </div>
 
-                <div className="mt-6 flex justify-center gap-3">
+                <div className="mt-6 flex flex-wrap justify-center gap-3">
                   <button className="btn btn-primary rounded-lg px-5 py-2 text-sm" onClick={game.newGame}>
                     Play again
+                  </button>
+                  <button className="btn rounded-lg px-5 py-2 text-sm" onClick={() => setReplayOpen(true)}>
+                    View replay
                   </button>
                   <button className="btn rounded-lg px-5 py-2 text-sm" onClick={() => setHistoryOpen(true)}>
                     History
@@ -417,6 +423,12 @@ export function GameView({
         >
           Your current game will be replaced. This can&apos;t be undone.
         </Modal>
+
+        <AnimatePresence>
+          {replayOpen && state.winner !== null ? (
+            <ReplayViewer replay={exportReplay(state, { mode })} onClose={() => setReplayOpen(false)} />
+          ) : null}
+        </AnimatePresence>
       </div>
     </MotionConfig>
   );

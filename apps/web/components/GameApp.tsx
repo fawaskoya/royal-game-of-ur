@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DIFFICULTIES, type DifficultyId } from "@ur/ai";
-import type { PlayerId } from "@ur/engine";
+import { importReplay, UrEngineError, type PlayerId, type Replay } from "@ur/engine";
 import { GameView } from "./GameView";
 import type { GameMode } from "@/lib/useGame";
 import { clearGame, loadGame } from "@/lib/persistence/gameStorage";
@@ -12,6 +12,7 @@ import { HowToPlay } from "./HowToPlay";
 import { TutorialView } from "./TutorialView";
 import { SettingsPanel } from "./SettingsPanel";
 import { StatsPanel } from "./StatsPanel";
+import { ReplayViewer } from "./ReplayViewer";
 
 type MenuChoice = "pvp" | "ai" | "watch";
 
@@ -87,6 +88,9 @@ export function GameApp() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [tutorialActive, setTutorialActive] = useState(false);
+  const [importedReplay, setImportedReplay] = useState<Replay | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // (Re)check for a saved game whenever the menu is showing — the game
   // auto-saves, so returning from a live game brings its save with it.
@@ -94,8 +98,28 @@ export function GameApp() {
     if (mode === null && !tutorialActive) setSaved(loadGame());
   }, [mode, tutorialActive]);
 
+  useEffect(() => {
+    if (!importError) return;
+    const timer = setTimeout(() => setImportError(null), 4000);
+    return () => clearTimeout(timer);
+  }, [importError]);
+
+  const handleReplayFile = async (file: File) => {
+    setImportError(null);
+    try {
+      const text = await file.text();
+      setImportedReplay(importReplay(text));
+    } catch (err) {
+      setImportError(err instanceof UrEngineError ? err.message : "Couldn't read that file as a replay.");
+    }
+  };
+
   if (tutorialActive) {
     return <TutorialView onExit={() => setTutorialActive(false)} />;
+  }
+
+  if (importedReplay) {
+    return <ReplayViewer replay={importedReplay} onClose={() => setImportedReplay(null)} />;
   }
 
   if (mode) {
@@ -221,7 +245,7 @@ export function GameApp() {
         </button>
       </div>
 
-      <div className="flex justify-center gap-2">
+      <div className="flex flex-wrap justify-center gap-2">
         <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => setGuideOpen(true)}>
           How to play
         </button>
@@ -231,7 +255,22 @@ export function GameApp() {
         <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => setSettingsOpen(true)}>
           Settings
         </button>
+        <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => fileInputRef.current?.click()}>
+          View a replay
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/json,.json"
+          className="sr-only"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (file) void handleReplayFile(file);
+          }}
+        />
       </div>
+      {importError ? <p className="text-center text-xs text-[var(--danger)]">{importError}</p> : null}
 
       <footer className="text-center text-xs text-[var(--ink-dim)]">
         Classic Irving Finkel rules · British Museum reconstruction

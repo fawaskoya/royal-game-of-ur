@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { ThemeEffect } from "@/components/ThemeEffect";
 
 export const metadata: Metadata = {
   title: "Royal Game of Ur",
@@ -14,7 +15,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <ThemeEffect />
+        {children}
+      </body>
     </html>
   );
 }
