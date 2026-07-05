@@ -10,12 +10,14 @@ Menu (GameApp)
 ├─ Play the machine     (difficulty select: 6 tiers + seat)
 ├─ Two players          (pass and play)
 ├─ Watch AI vs AI       (engine pairing)
-├─ How to play          (HowToPlay modal: Rules/Strategy tabs → interactive tutorial)
-├─ Stats                (StatsPanel modal — local results summary)
+├─ Private room · beta  (OnlineRoomView: create/join by code — local wire today)
+├─ How to play          (HowToPlay modal — pulses on first run until tutorial/first game)
+├─ Replays              (ArchivePanel: last 20 finished games → Watch/Analyze/Delete)
+├─ Stats                (StatsPanel modal — results summary + training rating)
 ├─ Settings             (SettingsPanel modal)
-├─ View a replay        (file picker → importReplay → ReplayViewer, read-only)
+├─ Import replay        (file picker → importReplay → ReplayViewer)
 └─ Begin                (confirms if it would replace a save)
-     └─ GameView        (board, panels, dice, hint, history, win overlay → View replay)
+     └─ GameView        (board, panels, dice, hint, history, win overlay → Analyze/Replay)
 ```
 
 `GameView` returns to the menu via ‹ Menu; a live game keeps its auto-save, so the Continue
@@ -50,5 +52,6 @@ comment in `lib/settings.ts`.
 | `ur:results` | Match results, capped at 200 (v1) | `lib/stats/matchResults.ts` |
 | `ur:settings` | Settings v1 | `lib/settings.ts` |
 | `ur:tutorial` | Tutorial progress (Phase 5) | tutorial module |
+| `ur:archive` | Finished games as `ur-replay@1` payloads, capped at 20 (v1) | `lib/archive.ts` |
 
 All stores: versioned, validated on read, fail-closed, never throw.

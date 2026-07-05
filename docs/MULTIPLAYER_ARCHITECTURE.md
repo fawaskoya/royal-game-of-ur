@@ -13,13 +13,22 @@ results. Clients rebuild state with `buildStateFromEvents` — the engine's repl
 (`REPLAY_MISMATCH`) doubles as anti-cheat. Any PR that applies a remote player's move without
 server validation is wrong by definition.
 
-## The seam in code (shipped, types only)
+## The seam in code (shipped — types AND a working local wire)
 
 `apps/web/lib/network/types.ts` defines `MultiplayerTransport`: connect/disconnect,
 `sendMove(ProposedMove)` (a *proposal*, staleness-checked against the event index),
 `requestRoll`, and subscriptions for `ServerEventBatch`, room players, and status. The unit of
-sync is the **event**, not the state — identical to local replay/persistence, so `useGame` can
-grow an online session source without touching components.
+sync is the **event**, not the state.
+
+**2026-07-06 — the full room flow is live over a local wire** (`lib/multiplayer/localRoom.ts`,
+`useLocalRoom.ts`, `components/OnlineRoomView.tsx`): create/join by 4-letter code,
+`LocalRoomHost` as the embedded stand-in server (owns the session, rolls all dice, validates
+every proposal through the engine, broadcasts append-only event batches), clients — including
+the host's own UI, via loopback — talk only through `MultiplayerTransport` and rebuild state
+with `buildStateFromEvents` (full re-verification per batch). The wire is a BroadcastChannel,
+so rooms reach other windows of the same browser today; Phase L2 replaces exactly one class
+(`SupabaseRoomTransport`) and moves `LocalRoomHost`'s logic into an Edge Function. Verified
+end-to-end across two tabs (host and guest alternating turns).
 
 ## Backend evaluation
 

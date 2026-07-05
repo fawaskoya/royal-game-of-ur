@@ -38,4 +38,11 @@ captures · AI-challenge score (per-tier bests) · puzzle score (later).
 
 **Rating: Elo first** (K=32 provisional → 16; per-mode pools), upgrade path to Glicko-2 once
 volume justifies it (deviation/volatility handle sparse play better). Seasons reset
-leaderboards, not ratings. All of this stays in docs until the server exists.
+leaderboards, not ratings.
+
+**Shipped 2026-07-06 — the Elo math + a local “training rating”**: `lib/rating/elo.ts` (pure,
+tested — the same update rule the server will run) and `lib/rating/training.ts`, which folds
+the stored vs-AI results into a rating against fixed per-tier anchors (beginner 600 → master
+1600). Clearly labeled local/unranked in the Stats panel and shown with a delta on the win
+screen. The anchors are deliberate fictions (the ladder is ordered, not calibrated) — a
+progress meter, not a claim. Real rankings remain server-side per the plan above.

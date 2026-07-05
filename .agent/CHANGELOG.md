@@ -1,6 +1,33 @@
 # Changelog
 
-## [Unreleased] — 2026-07-04/05 campaign (Phases 2–10)
+## [Unreleased] — 2026-07-06 experience + multiplayer wave
+
+### Added
+- **Post-game analysis**: every real decision graded by the hint engine's search
+  (`lib/analysis.ts`) — accuracy per player, best/good/inaccuracy/mistake/blunder bands,
+  clickable key moments in the replay viewer, per-position grade captions; "Analyze" from the
+  win screen and the archive. 7 unit tests incl. perfect-play-scores-100.
+- **Game archive**: last 20 finished games stored as verifiable `ur-replay@1` payloads
+  (`ur:archive` v1), menu "Replays" panel with Watch/Analyze/Delete; recorded once per game
+  alongside MatchResults.
+- **Training rating**: pure Elo module (`lib/rating/elo.ts`, the same rule a ranked server
+  will run) + local trajectory vs fixed per-tier anchors; shown in Stats and as a delta on the
+  win screen, explicitly labeled local/unranked.
+- **Private room multiplayer (beta)**: full room flow — create/join by 4-letter code, seats,
+  waiting states — over the `MultiplayerTransport` seam with a BroadcastChannel wire
+  (`lib/multiplayer/`). Host tab embeds the stand-in server (owns dice, validates via engine,
+  broadcasts event batches); every client re-verifies via `buildStateFromEvents`. Verified
+  live across two windows. Internet wire = one class swap (GO_LIVE_PLAN L2).
+- **PWA groundwork**: manifest, SVG + PNG icons (rosette), apple-touch metadata.
+- **Menu**: Private room card, Replays entry, first-run pulse on "How to play".
+- `docs/GO_LIVE_PLAN.md`: web → Supabase online → Capacitor store phases with costs and
+  founder-gated steps.
+
+### Fixed
+- Full-screen replay viewer no longer fades in (a backgrounded tab could freeze the fade
+  mid-way, leaving the view translucent).
+
+## [2026-07-04/05] campaign (Phases 2–10)
 
 ### Added
 - **Persistence (Phase 2)**: versioned `SavedGame` over the engine's exact `ur-session@1`
