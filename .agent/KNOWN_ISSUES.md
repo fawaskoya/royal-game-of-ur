@@ -6,7 +6,6 @@ Status: Open | In Progress | Mitigated | Resolved
 
 | ID | Issue | Impact | Plan |
 |----|-------|--------|------|
-| AG-1 | No git remote configured — commits are local-only, no off-machine backup. | Disk loss loses the project. | Founder must pick the GitHub account (personal vs `potentdream`) and add a remote; then `git push -u origin main` + branch. |
 | AG-4 | No lint script configured (`pnpm lint` doesn't exist). | Style drift risk. | Don't invent commands (founding prompt). Consider adding ESLint in a devops loop; until then typecheck + tests are the gate. |
 | AG-5 | Tile squareness in fit mode is approximate (frame `aspect-ratio` includes padding/gaps, so tiles deviate a few % from square). | Cosmetic only. | Accepted; revisit if a texture pass makes it visible. |
 | AG-6 | Dev-only `?layout=` override bypasses touch auto-orientation. | Could confuse if shared in a URL. | Test-only by convention; remove or gate if it causes confusion. |
@@ -22,3 +21,4 @@ Status: Open | In Progress | Mitigated | Resolved
 | AG-0b | Vertical mode overflowed mobile portrait. | 2026-07-04 — same fit system; non-scrolling in both orientations. |
 | AG-0c | Stale production server (`next start` from 2026-07-02) masked live edits during dev. | 2026-07-04 — killed; `pnpm dev` is the workflow (log: /tmp/ur-web-dev.log). |
 | AG-8 | Running `next build` while `next dev` is serving corrupts the shared `.next` (client chunks 404 → hydration silently dies; buttons do nothing). Hit twice on 2026-07-04/05. | Rule: stop the dev server before `pnpm --filter @ur/web build`, or clean-restart dev (`rm -rf apps/web/.next && pnpm dev`) after. Recorded in CHANGELOG Technical + RELEASE_CHECKLIST awareness. |
+| AG-1 | No git remote configured — commits were local-only, no off-machine backup. | 2026-07-05 — private repo created (`gh repo create`) under the founder's personal account; both `main` and `fix/responsive-persistence-ux` pushed with upstream tracking to `github.com/fawaskoya/royal-game-of-ur`. |
