@@ -13,6 +13,10 @@ import { TutorialView } from "./TutorialView";
 import { SettingsPanel } from "./SettingsPanel";
 import { StatsPanel } from "./StatsPanel";
 import { ReplayViewer } from "./ReplayViewer";
+import { ArchivePanel } from "./ArchivePanel";
+import { OnlineRoomView } from "./OnlineRoomView";
+import { loadTutorialProgress } from "@/lib/useTutorial";
+import { loadResults } from "@/lib/stats/matchResults";
 
 type MenuChoice = "pvp" | "ai" | "watch";
 
@@ -88,14 +92,21 @@ export function GameApp() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [tutorialActive, setTutorialActive] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [roomActive, setRoomActive] = useState(false);
+  const [firstRun, setFirstRun] = useState(false);
   const [importedReplay, setImportedReplay] = useState<Replay | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // (Re)check for a saved game whenever the menu is showing — the game
   // auto-saves, so returning from a live game brings its save with it.
+  // First-run detection nudges newcomers toward the tutorial.
   useEffect(() => {
-    if (mode === null && !tutorialActive) setSaved(loadGame());
+    if (mode === null && !tutorialActive) {
+      setSaved(loadGame());
+      setFirstRun(!loadTutorialProgress().completed && loadResults().length === 0);
+    }
   }, [mode, tutorialActive]);
 
   useEffect(() => {
@@ -116,6 +127,10 @@ export function GameApp() {
 
   if (tutorialActive) {
     return <TutorialView onExit={() => setTutorialActive(false)} />;
+  }
+
+  if (roomActive) {
+    return <OnlineRoomView onExit={() => setRoomActive(false)} />;
   }
 
   if (importedReplay) {
@@ -207,6 +222,14 @@ export function GameApp() {
         {card("ai", "Play the machine", "Honest difficulty tiers — none of them cheat.")}
         {card("pvp", "Two players", "Pass and play at one screen.")}
         {card("watch", "Watch AI vs AI", "Set two engines against each other.")}
+        <button className="btn w-full rounded-xl px-4 py-3 text-left" onClick={() => setRoomActive(true)}>
+          <div className="font-display">
+            Private room <span className="chip align-middle">beta</span>
+          </div>
+          <div className="mt-0.5 text-xs text-[var(--ink-dim)]">
+            Play by room code across two windows — internet rooms arrive with accounts.
+          </div>
+        </button>
       </div>
 
       <div className="flex flex-col gap-3 rounded-xl bg-[var(--bg-raised)] p-4">
@@ -246,8 +269,17 @@ export function GameApp() {
       </div>
 
       <div className="flex flex-wrap justify-center gap-2">
-        <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => setGuideOpen(true)}>
+        <button
+          className={[
+            "btn rounded-lg px-4 py-1.5 text-sm",
+            firstRun ? "pulse-gold ring-1 ring-[var(--gold)]" : "",
+          ].join(" ")}
+          onClick={() => setGuideOpen(true)}
+        >
           How to play
+        </button>
+        <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => setArchiveOpen(true)}>
+          Replays
         </button>
         <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => setStatsOpen(true)}>
           Stats
@@ -256,7 +288,7 @@ export function GameApp() {
           Settings
         </button>
         <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => fileInputRef.current?.click()}>
-          View a replay
+          Import replay
         </button>
         <input
           ref={fileInputRef}
@@ -278,6 +310,7 @@ export function GameApp() {
 
       <StatsPanel open={statsOpen} onClose={() => setStatsOpen(false)} />
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <ArchivePanel open={archiveOpen} onClose={() => setArchiveOpen(false)} />
       <HowToPlay
         open={guideOpen}
         onClose={() => setGuideOpen(false)}
