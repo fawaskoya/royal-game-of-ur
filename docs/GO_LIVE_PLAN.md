@@ -50,24 +50,23 @@ wire is now *written* against a real Supabase project, not yet deployed/verified
 - `apps/web/lib/multiplayer/{supabaseClient,supabaseTransport}.ts`: `SupabaseRoomTransport
   implements MultiplayerTransport`, guest identity via Supabase anonymous auth.
 
-**Not done / blocked** — this repo had no Supabase CLI session when the above was written, so
-**none of it has been deployed or run against a live database yet**:
-1. **[founder]** Generate a Supabase Personal Access Token (dashboard → Account → Access
-   Tokens) so the CLI can authenticate non-interactively (this environment can't complete the
-   browser OAuth login flow it normally uses).
-2. Apply the migration (`supabase db push` or paste `0001_init.sql` into the SQL Editor).
-3. Deploy the function (`supabase functions deploy game-move`) — verify the `sloppy-imports`
-   Deno config actually resolves `@ur/engine`'s extensionless internal imports; if not, vendor
-   a bundled copy into `supabase/functions/_shared/engine.ts` (documented there).
-4. **[founder]** Enable "Anonymous Sign-ins" in Dashboard → Authentication → Providers (off by
-   default; guest identity depends on it).
-5. End-to-end test: create a room from one browser/account, join from another, play a full
-   game, confirm Realtime sync and that a tampered `move` payload is rejected.
-6. Wire `SupabaseRoomTransport` into an online-aware version of the room UI (today
+**Verified live end-to-end (2026-07-08):** migration applied (`supabase db push`), function
+deployed (`supabase functions deploy game-move` — the `sloppy-imports` Deno config did *not*
+resolve the engine's extensionless internal imports through the CLI's own asset-walker as
+hoped; fixed by bundling the engine into one dependency-free file with esbuild, per the
+fallback this doc already flagged), anonymous sign-ins enabled **[founder]**. A scripted test
+against the live project — two real anonymous accounts, create room → join by code → roll →
+move → read the event log back — passed, including both negative checks (a cross-seat move
+and a stale/replayed request were both correctly rejected). One real bug caught and fixed by
+that test: `game_secrets.seed`/`rng_state` were `int4` but a uint32 random seed can exceed its
+signed range — widened to `bigint` (migration `0002`).
+
+Remaining:
+1. Wire `SupabaseRoomTransport` into an online-aware version of the room UI (today
    `OnlineRoomView` only uses the local transport) and swap based on `isOnlineConfigured()`.
-7. Server `MatchResult`s → Elo ranked pool → real leaderboards (the local Elo module is the
+2. Server `MatchResult`s → Elo ranked pool → real leaderboards (the local Elo module is the
    same math; `docs/LEADERBOARDS_AND_STATS.md`).
-8. Beta with invite codes → open.
+3. Beta with invite codes → open.
 
 ## Phase L3 — App stores (v1.2)
 

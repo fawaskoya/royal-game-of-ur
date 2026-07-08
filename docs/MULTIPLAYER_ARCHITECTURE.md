@@ -36,9 +36,15 @@ game_events, ratings, and a policy-less `game_secrets` table for commit-reveal d
 `buildStateFromEvents`, validate through `@ur/engine`, append events — against Postgres instead
 of memory) are both in the repo. `SupabaseRoomTransport implements MultiplayerTransport`
 (`apps/web/lib/multiplayer/supabaseTransport.ts`) mirrors `LocalRoomTransport`'s shape exactly.
-None of this has run against the live database yet — this environment can't complete Supabase's
-browser-based CLI login, so the migration hasn't been applied and the function hasn't been
-deployed. Exact remaining steps in `docs/GO_LIVE_PLAN.md` Phase L2.
+**Verified end-to-end 2026-07-08** (CLI authenticated via a Supabase Personal Access Token,
+sidestepping the browser OAuth flow this environment can't complete): migration applied,
+function deployed, anonymous auth enabled. A scripted test with two real anonymous accounts —
+create room, join by code, roll, move, read the event log back via RLS, plus negative tests
+for a cross-seat move and a stale/replayed request — passed in full. One real bug found and
+fixed: `game_secrets.seed`/`rng_state` were `int4`, which a uint32 crypto-random seed can
+exceed; widened to `bigint` (migration `0002_secrets_bigint.sql`). Remaining: wire
+`SupabaseRoomTransport` into the room UI in place of the local-only transport
+(`docs/GO_LIVE_PLAN.md` Phase L2).
 
 ## Backend evaluation
 

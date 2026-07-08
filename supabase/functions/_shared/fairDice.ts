@@ -8,8 +8,14 @@
  * The RNG itself (mulberry32) is "gameplay-quality, not cryptographic" per
  * its own doc comment — the commit-reveal wrapper is what supplies the
  * unpredictability and verifiability guarantee, not the generator's
- * statistical strength. A 32-bit crypto-random seed (4 billion possibilities)
- * is adequate for a dice board game; this is not a gambling-grade RNG.
+ * statistical strength. A 32-bit crypto-random seed (~4.3 billion
+ * possibilities) is adequate for a dice board game; this is not a
+ * gambling-grade RNG.
+ *
+ * Full uint32 range (0..4294967295) — `game_secrets.seed`/`rng_state` are
+ * `bigint` columns specifically so this and the RNG's evolving internal
+ * state (also a full uint32, produced by mulberry32's `a >>> 0` — masking
+ * it would desync exact-resume continuation) both fit without truncation.
  */
 export function randomSeed(): number {
   const bytes = new Uint32Array(1);
