@@ -7,37 +7,67 @@ proves sticky. No React Native rewrite — one codebase throughout.
 Steps marked **[founder]** need accounts/payments/decisions only the founder can make; nothing
 gets deployed or published without an explicit go.
 
-## Phase L1 — Web launch (ready within days)
+## Phase L1 — Web launch
 
 The app is fully static (`next build` → prerendered, no server routes), so hosting is trivial.
 
-1. **[founder]** Vercel: import `github.com/fawaskoya/royal-game-of-ur`, root `apps/web`
-   (framework auto-detected; monorepo needs `pnpm` + root install). Free Hobby tier suffices.
-2. **[founder]** Domain (e.g. `royalgameofur.app` / `playur.game`, ~$10–20/yr) + attach.
+**Done (2026-07-06/08):** Vercel project `royal-game-of-ur` created (CLI, `fawas-koyas-projects-cf4a5ddb`
+scope), Root Directory set to `apps/web` (monorepo-aware), Deployment Protection disabled
+**[founder]**, production deploy live and public.
+
+Remaining:
+1. **[founder]** Domain (e.g. `royalgameofur.app` / `playur.game`, ~$10–20/yr) + attach in
+   Vercel → Settings → Domains.
+2. **[founder, optional]** Connect the GitHub repo in Vercel → Settings → Git for auto-deploy on
+   push (currently deploys are manual via `vercel --prod`) — needs authorizing the Vercel
+   GitHub App, an OAuth-style grant only the founder can approve.
 3. PWA polish (manifest + icons shipped): add a minimal service worker for offline play +
-   install prompt criteria; verify Lighthouse installability. *(next session task)*
+   install prompt criteria; verify Lighthouse installability.
 4. SEO/meta: OG image (board render), description, canonical; `robots.txt`, sitemap.
 5. Analytics **[founder decision]**: PostHog or Vercel Analytics (privacy note either way).
 6. Feedback channel: a "Feedback" link (GitHub issues or a form).
 7. Pre-flight: `.agent/RELEASE_CHECKLIST.md` + full viewport matrix + `pnpm test`.
 
-**Definition of done:** public URL, installable on desktop/Android/iOS Home Screen (PWA),
-analytics counting, single-player + same-device rooms working.
+**Definition of done:** public URL ✓, installable on desktop/Android/iOS Home Screen (PWA),
+analytics counting, single-player + same-device rooms working ✓.
 
 ## Phase L2 — Online multiplayer + real leaderboards (v1.1)
 
-The entire client is already built against the `MultiplayerTransport` seam and verified with
-the local wire (rooms, codes, seats, server-validated moves, event sync). What remains is the
-real wire + accounts:
+The entire client is built against the `MultiplayerTransport` seam and verified with the local
+wire (rooms, codes, seats, server-validated moves, event sync — `LocalRoomTransport`). The real
+wire is now *written* against a real Supabase project, not yet deployed/verified:
 
-1. **[founder]** Create a Supabase project (free tier to start; ~$25/mo Pro when real users).
-2. Implement per `ONLINE_ARCHITECTURE.md` / `MULTIPLAYER_ARCHITECTURE.md`: auth (guest +
-   Google/Apple), `games`/`game_events` tables, Edge Function running `@ur/engine` for
-   validation + commit–reveal dice, Realtime channel broadcast.
-3. `SupabaseRoomTransport implements MultiplayerTransport` — the room UI does not change.
-4. Server `MatchResult`s → Elo ranked pool → real leaderboards (the local Elo module is the
+**Done (2026-07-08):**
+- Supabase project `royal-game-of-ur` created **[founder]** (`potentdream's Org`, Sydney region).
+- Keys wired into Vercel (all environments) and a local `.env.local`: `NEXT_PUBLIC_SUPABASE_URL`,
+  `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`.
+- `supabase/migrations/0001_init.sql`: `profiles`, `games`, `game_events`, `ratings`,
+  `game_secrets` (server-only, RLS with zero policies — commit-reveal dice fairness).
+- `supabase/functions/game-move/index.ts`: server-authoritative Edge Function (`create_room`,
+  `join_room`, `roll`, `move`) — reconstructs state via `buildStateFromEvents`, validates
+  through `@ur/engine`, appends events. Reads go through plain PostgREST + Realtime on
+  `game_events` (RLS-gated), not this function.
+- `apps/web/lib/multiplayer/{supabaseClient,supabaseTransport}.ts`: `SupabaseRoomTransport
+  implements MultiplayerTransport`, guest identity via Supabase anonymous auth.
+
+**Not done / blocked** — this repo had no Supabase CLI session when the above was written, so
+**none of it has been deployed or run against a live database yet**:
+1. **[founder]** Generate a Supabase Personal Access Token (dashboard → Account → Access
+   Tokens) so the CLI can authenticate non-interactively (this environment can't complete the
+   browser OAuth login flow it normally uses).
+2. Apply the migration (`supabase db push` or paste `0001_init.sql` into the SQL Editor).
+3. Deploy the function (`supabase functions deploy game-move`) — verify the `sloppy-imports`
+   Deno config actually resolves `@ur/engine`'s extensionless internal imports; if not, vendor
+   a bundled copy into `supabase/functions/_shared/engine.ts` (documented there).
+4. **[founder]** Enable "Anonymous Sign-ins" in Dashboard → Authentication → Providers (off by
+   default; guest identity depends on it).
+5. End-to-end test: create a room from one browser/account, join from another, play a full
+   game, confirm Realtime sync and that a tampered `move` payload is rejected.
+6. Wire `SupabaseRoomTransport` into an online-aware version of the room UI (today
+   `OnlineRoomView` only uses the local transport) and swap based on `isOnlineConfigured()`.
+7. Server `MatchResult`s → Elo ranked pool → real leaderboards (the local Elo module is the
    same math; `docs/LEADERBOARDS_AND_STATS.md`).
-5. Beta with invite codes → open.
+8. Beta with invite codes → open.
 
 ## Phase L3 — App stores (v1.2)
 

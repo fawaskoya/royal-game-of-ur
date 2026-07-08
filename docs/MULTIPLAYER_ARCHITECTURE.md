@@ -26,9 +26,19 @@ sync is the **event**, not the state.
 every proposal through the engine, broadcasts append-only event batches), clients — including
 the host's own UI, via loopback — talk only through `MultiplayerTransport` and rebuild state
 with `buildStateFromEvents` (full re-verification per batch). The wire is a BroadcastChannel,
-so rooms reach other windows of the same browser today; Phase L2 replaces exactly one class
-(`SupabaseRoomTransport`) and moves `LocalRoomHost`'s logic into an Edge Function. Verified
-end-to-end across two tabs (host and guest alternating turns).
+so rooms reach other windows of the same browser today. Verified end-to-end across two tabs
+(host and guest alternating turns).
+
+**2026-07-08 — the real wire is written, not yet deployed.** A Supabase project exists
+(`royal-game-of-ur`, `potentdream's Org`); `supabase/migrations/0001_init.sql` (profiles, games,
+game_events, ratings, and a policy-less `game_secrets` table for commit-reveal dice) and
+`supabase/functions/game-move/index.ts` (the exact `LocalRoomHost` logic — reconstruct via
+`buildStateFromEvents`, validate through `@ur/engine`, append events — against Postgres instead
+of memory) are both in the repo. `SupabaseRoomTransport implements MultiplayerTransport`
+(`apps/web/lib/multiplayer/supabaseTransport.ts`) mirrors `LocalRoomTransport`'s shape exactly.
+None of this has run against the live database yet — this environment can't complete Supabase's
+browser-based CLI login, so the migration hasn't been applied and the function hasn't been
+deployed. Exact remaining steps in `docs/GO_LIVE_PLAN.md` Phase L2.
 
 ## Backend evaluation
 

@@ -10,6 +10,9 @@ Status: Open | In Progress | Mitigated | Resolved
 | AG-5 | Tile squareness in fit mode is approximate (frame `aspect-ratio` includes padding/gaps, so tiles deviate a few % from square). | Cosmetic only. | Accepted; revisit if a texture pass makes it visible. |
 | AG-6 | Dev-only `?layout=` override bypasses touch auto-orientation. | Could confuse if shared in a URL. | Test-only by convention; remove or gate if it causes confusion. |
 | AG-7 | In-game `motion.button` layout animations run under `MotionConfig reducedMotion="user"`, but the win overlay uses opacity/scale — verify full reduced-motion coverage in the a11y pass. | A11y. | Phase 3 UI loop checks `prefers-reduced-motion`. |
+| AG-9 | Supabase backend (migration + Edge Function + client transport) is written but unverified — this environment can't complete `supabase login`'s browser OAuth flow (non-TTY), so nothing has run against the live database. | Online play (Phase L2) is blocked until this is done. | Founder generates a Personal Access Token (dashboard → Account → Access Tokens); then `SUPABASE_ACCESS_TOKEN=<token> supabase link/db push/functions deploy`. Exact checklist in `docs/GO_LIVE_PLAN.md` Phase L2. |
+| AG-10 | `game-move` Edge Function imports `@ur/engine`'s source directly via a relative path + Deno `sloppy-imports` config, to let Deno resolve the engine's Node-style extensionless internal imports. Unverified — never deployed. | If sloppy-imports doesn't resolve cleanly, the function fails to boot. | Fallback documented in `supabase/functions/_shared/engine.ts`: bundle the engine with esbuild into one file and swap the import. |
+| AG-11 | Vercel production deploys are manual (`vercel --prod`) — the GitHub repo isn't connected for auto-deploy-on-push. | New commits don't go live until someone runs the deploy command. | Founder step: Vercel → Settings → Git → Connect (authorizes the Vercel GitHub App — an OAuth grant only the founder can approve). |
 
 ## Resolved
 
