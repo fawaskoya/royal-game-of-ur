@@ -9,7 +9,7 @@
  *      landscape→horizontal, no toggle); desktops use the header toggle,
  *      which pins the choice into settings.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { loadSettings, saveSettings } from "@/lib/settings";
 
 export type GameLayout = "vertical" | "horizontal";
@@ -73,13 +73,18 @@ export function useGameLayout(): { layout: GameLayout; isTouch: boolean; toggle(
     return () => window.removeEventListener("ur:settings-changed", onSettings);
   }, []);
 
+  // Mirror for event-handler reads: keeps the persist side effect OUT of the
+  // setLayout updater — React may run updaters during render, and
+  // saveSettings dispatches a window event that setStates other components
+  // (ThemeEffect), which React (rightly) flags as an update-during-render.
+  const layoutRef = useRef(layout);
+  layoutRef.current = layout;
+
   const toggle = useCallback(() => {
-    setLayout((prev) => {
-      const next: GameLayout = prev === "vertical" ? "horizontal" : "vertical";
-      // Desktop toggle pins the orientation (settings survive reloads).
-      saveSettings({ ...loadSettings(), orientation: next });
-      return next;
-    });
+    const next: GameLayout = layoutRef.current === "vertical" ? "horizontal" : "vertical";
+    // Desktop toggle pins the orientation (settings survive reloads).
+    saveSettings({ ...loadSettings(), orientation: next });
+    setLayout(next);
   }, []);
 
   return { layout, isTouch, toggle };

@@ -483,6 +483,67 @@ body {
   justify-self: stretch;
 }
 
+/* Desktop vertical: the flanked layout. A tall board wastes the wide screen
+   when everything stacks, so the panels move beside it — Dark keeps the
+   whole left column (centered), Light and the dice tray form a centered
+   cluster on the right, and the board takes the full viewport height. The
+   middle column's width is the board's own geometry (3/8 of the grid's
+   height, ~100dvh minus header/padding chrome), capped so tiles stay
+   dignified on very tall screens. Scoped to .game-screen so the replay
+   viewer's stacked grid is untouched. */
+@media (min-width: 1024px) {
+  .game-screen .game-grid[data-layout="vertical"] {
+    grid-template-columns: minmax(0, 1fr) min(calc((100dvh - 7rem) * 3 / 8), 24rem) minmax(0, 1fr);
+    grid-template-rows: 1fr 1fr;
+    grid-template-areas:
+      "dark board light"
+      "dark board dice";
+    align-items: center;
+    column-gap: clamp(1rem, 2.5vw, 2.25rem);
+    row-gap: 0.75rem;
+  }
+
+  .game-screen .game-grid[data-layout="vertical"] .ga-board {
+    align-self: stretch;
+    justify-self: stretch;
+  }
+
+  .game-screen .game-grid[data-layout="vertical"] .ga-dark {
+    justify-self: end;
+    width: 100%;
+    max-width: 24rem;
+  }
+
+  .game-screen .game-grid[data-layout="vertical"] .ga-light {
+    align-self: end;
+    justify-self: start;
+    width: 100%;
+    max-width: 24rem;
+  }
+
+  .game-screen .game-grid[data-layout="vertical"] .ga-dice {
+    align-self: start;
+    justify-self: start;
+    width: 100%;
+    max-width: 24rem;
+  }
+
+  /* The side tray is as narrow as the horizontal sidebar's — same trim. */
+  .game-screen .game-grid[data-layout="vertical"] .dice-tray .die {
+    height: 1.75rem;
+    width: 1.75rem;
+  }
+
+  .game-screen .game-grid[data-layout="vertical"] .dice-row {
+    gap: 0.5rem;
+    padding-inline: 0;
+  }
+
+  .game-screen .game-grid[data-layout="vertical"] .dice-tray {
+    padding-inline: 0.75rem;
+  }
+}
+
 /* Contain-fit: as large as possible inside the board cell while keeping the
    grid's aspect ratio, capped so tiles never get comically large. Board.tsx
    sets --bcols/--brows (8×3 landscape, 3×8 portrait) and --board-max-w. */

@@ -190,8 +190,7 @@ export function GameView({
     <MotionConfig reducedMotion={settings.motion === "reduced" ? "always" : "user"}>
       <div
         className={[
-          "game-screen mx-auto flex w-full max-w-3xl flex-col gap-3 px-3 py-4 sm:gap-4 sm:py-6",
-          layout === "horizontal" ? "lg:max-w-6xl" : "",
+          "game-screen mx-auto flex w-full max-w-3xl flex-col gap-3 px-3 py-4 sm:gap-4 sm:py-6 lg:max-w-6xl",
         ].join(" ")}
       >
         <header className="game-header flex items-center justify-between">
