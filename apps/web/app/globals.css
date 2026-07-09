@@ -455,7 +455,10 @@ body {
 
 .game-screen {
   height: 100dvh;
+  max-height: 100dvh;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .game-grid {
@@ -469,6 +472,40 @@ body {
     "dice";
   grid-template-rows: auto minmax(0, 1fr) auto auto;
   gap: 0.75rem;
+}
+
+/* Phone portrait (and narrow tablets): pools as side rails so the board
+   claims most of the height. Dice/roll sit in a slim footer under the board. */
+@media (max-width: 1023px) {
+  .game-grid[data-layout="vertical"] {
+    grid-template-columns: minmax(3.4rem, 4.25rem) minmax(0, 1fr) minmax(3.4rem, 4.25rem);
+    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "dark board light"
+      "dice dice dice";
+    column-gap: 0.35rem;
+    row-gap: 0.45rem;
+    align-items: stretch;
+  }
+
+  .game-grid[data-layout="vertical"] .ga-dark,
+  .game-grid[data-layout="vertical"] .ga-light {
+    min-height: 0;
+    max-height: 100%;
+  }
+
+  .game-grid[data-layout="vertical"] .ga-board {
+    min-height: 0;
+  }
+
+  .game-grid[data-layout="vertical"] .ga-dice {
+    min-width: 0;
+  }
+
+  /* Allow the portrait board to grow into the center column. */
+  .game-grid[data-layout="vertical"] .board-frame--fit {
+    --board-max-w: min(100cqw, 28rem);
+  }
 }
 
 .ga-dark {
@@ -653,17 +690,37 @@ body {
 /* Inside the horizontal sidebar the dice tray shares 21rem with two buttons —
    trim dice and gaps so the row never presses the overflow-hidden edge. */
 .game-grid[data-layout="horizontal"] .dice-tray .die {
-  height: 1.75rem;
-  width: 1.75rem;
+  height: 1.6rem;
+  width: 1.6rem;
 }
 
 .game-grid[data-layout="horizontal"] .dice-row {
-  gap: 0.5rem;
+  gap: 0.35rem;
   padding-inline: 0;
 }
 
 .game-grid[data-layout="horizontal"] .dice-tray {
-  padding-inline: 0.75rem;
+  padding: 0.5rem 0.65rem;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.game-grid[data-layout="horizontal"] .dice-tray .roll-total {
+  width: 1.4rem;
+  font-size: 1.15rem;
+}
+
+.game-grid[data-layout="horizontal"] .dice-tray .btn {
+  padding-inline: 0.65rem;
+  padding-block: 0.35rem;
+  font-size: 0.8rem;
+}
+
+/* Desktop vertical side tray: same wrap-friendly density. */
+.game-screen .game-grid[data-layout="vertical"] .ga-dice .dice-tray {
+  min-width: 0;
+  max-width: 100%;
 }
 
 @media (max-height: 560px) {

@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { motion } from "framer-motion";
 import type { GameEvent, GameState } from "@ur/engine";
 import type { Settings } from "@/lib/settings";
@@ -70,6 +71,10 @@ export interface DiceTrayProps {
   onHint?: () => void;
   diceSpeed?: DiceSpeed;
   onRoll(): void;
+  /** Extra actions (tutorial Next / Finish) rendered next to Roll. */
+  extraActions?: ReactNode;
+  /** Compact single-row mobile footer (dice + buttons, status below). */
+  compact?: boolean;
 }
 
 export function DiceTray({
@@ -82,6 +87,8 @@ export function DiceTray({
   onHint,
   diceSpeed = "physics",
   onRoll,
+  extraActions,
+  compact = false,
 }: DiceTrayProps) {
   // Show the pending roll, or keep the last throw visible for context.
   const lastRollEvent = [...state.history].reverse().find((e) => e.type === "roll");
@@ -109,10 +116,16 @@ export function DiceTray({
   else status = `${currentName} to play`;
 
   return (
-    <div className="dice-tray flex flex-col gap-2.5 rounded-xl bg-[var(--bg-raised)] px-4 py-3">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <div className="dice-row flex items-center gap-2.5 px-1 sm:gap-3">
+    <div
+      className={[
+        "dice-tray flex flex-col rounded-xl bg-[var(--bg-raised)]",
+        compact ? "gap-1.5 px-2.5 py-2" : "gap-2.5 px-4 py-3",
+      ].join(" ")}
+    >
+      {/* Dice + actions: wrap so sidebar / short widths never overflow */}
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <div className="dice-row flex items-center gap-1.5 px-0.5 sm:gap-2.5 sm:px-1">
             <DieGradients />
             {(values ?? [0, 0, 0, 0]).map((value, i) => (
               <Die
@@ -135,7 +148,8 @@ export function DiceTray({
               damping: 20,
             }}
             className={[
-              "roll-total font-display w-8 text-center text-2xl",
+              "roll-total font-display shrink-0 text-center",
+              compact ? "w-7 text-xl" : "w-8 text-2xl",
               stale ? "text-[var(--ink-dim)]" : "text-[var(--gold)]",
             ].join(" ")}
             aria-label={total === null ? "no roll yet" : `rolled ${total}`}
@@ -144,10 +158,10 @@ export function DiceTray({
           </motion.div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
           {onHint ? (
             <button
-              className="btn rounded-lg px-3 py-2 text-sm"
+              className={["btn rounded-lg text-sm", compact ? "px-2.5 py-1.5" : "px-3 py-2"].join(" ")}
               disabled={!humanCanMove}
               onClick={onHint}
               aria-keyshortcuts="h"
@@ -157,18 +171,26 @@ export function DiceTray({
             </button>
           ) : null}
           <button
-            className={["btn btn-primary rounded-lg px-5 py-2 text-sm", humanCanRoll ? "pulse-gold" : ""].join(" ")}
+            className={[
+              "btn btn-primary rounded-lg text-sm",
+              compact ? "min-h-9 px-4 py-1.5" : "px-5 py-2",
+              humanCanRoll ? "pulse-gold" : "",
+            ].join(" ")}
             disabled={!humanCanRoll}
             onClick={onRoll}
             aria-keyshortcuts="r"
           >
             Roll
           </button>
+          {extraActions}
         </div>
       </div>
 
       <div
-        className={["text-sm", emphasis ? "text-[var(--gold)]" : "text-[var(--ink-dim)]"].join(" ")}
+        className={[
+          compact ? "text-xs leading-snug" : "text-sm",
+          emphasis ? "text-[var(--gold)]" : "text-[var(--ink-dim)]",
+        ].join(" ")}
         role="status"
       >
         {status}

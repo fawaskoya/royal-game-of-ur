@@ -1,41 +1,77 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { AnimatePresence, LayoutGroup, MotionConfig, motion } from "framer-motion";
 import { useGameLayout } from "@/lib/useGameLayout";
 import { useTutorial } from "@/lib/useTutorial";
 import { useSettings } from "@/lib/settings";
+import { sfx } from "@/lib/sound";
 import { Board } from "./Board";
 import { PlayerPanel } from "./PlayerPanel";
-import { Die, DieGradients } from "./DiceTray";
+import { DiceTray } from "./DiceTray";
 
 /**
  * Guided first game: real engine, scripted dice.
- * Dice stay visible in their tray slot; coach copy sits *below* them so it
- * never covers the throw.
+ * Same mobile flank layout as GameView; coach copy lives above the dice tray.
  */
 export function TutorialView({ onExit }: { onExit(): void }) {
   const tutorial = useTutorial();
-  const { layout } = useGameLayout();
+  const { layout, isTouch } = useGameLayout();
   const { settings } = useSettings();
   const { state } = tutorial;
+  const heardLen = useRef(0);
 
   const entryMove = tutorial.allowedMoves.find((m) => m.from === 0) ?? null;
+  const useRail = layout === "vertical" && isTouch;
 
-  // Pending roll, or last roll for context (same idea as DiceTray).
-  const lastRollEvent = [...state.history].reverse().find((e) => e.type === "roll");
-  const values = state.dice?.values ?? lastRollEvent?.values ?? null;
-  const total = state.dice?.total ?? lastRollEvent?.total ?? null;
-  const stale = state.dice === null;
+  // Sound: same rules as GameView (tutorial never used the live tail before).
+  useEffect(() => {
+    const history = state.history;
+    if (history.length <= heardLen.current) {
+      heardLen.current = history.length;
+      return;
+    }
+    const fresh = history.slice(heardLen.current);
+    heardLen.current = history.length;
+    for (const event of fresh) {
+      if (event.type === "roll") {
+        sfx.roll();
+        continue;
+      }
+      if (event.type === "move") {
+        if (event.capture) sfx.capture();
+        else if (event.extraTurn) sfx.rosette();
+        else sfx.move();
+      }
+    }
+  }, [state.history]);
+
+  useEffect(() => {
+    if (tutorial.finished && state.winner !== null) sfx.win();
+  }, [tutorial.finished, state.winner]);
 
   const finish = () => {
     tutorial.markDone();
     onExit();
   };
 
+  const onRoll = () => {
+    // Play + unlock AudioContext on the user gesture (async resume after paint is unreliable).
+    sfx.roll();
+    heardLen.current = state.history.length + 1; // avoid double-playing the same roll in the effect
+    tutorial.roll();
+  };
+
+  const statusHint = tutorial.waitingForMove
+    ? "Tap the glowing piece"
+    : tutorial.guideActing
+      ? "Dark is playing…"
+      : null;
+
   return (
     <MotionConfig reducedMotion={settings.motion === "reduced" ? "always" : "user"}>
-      <div className="game-screen mx-auto flex w-full max-w-3xl flex-col gap-3 px-3 py-4 sm:gap-4 sm:py-6 lg:max-w-6xl">
-        <header className="game-header flex items-center justify-between">
+      <div className="game-screen mx-auto w-full max-w-3xl gap-2 px-2 py-2 sm:gap-3 sm:px-3 sm:py-4 lg:max-w-6xl lg:gap-4 lg:py-6">
+        <header className="game-header flex shrink-0 items-center justify-between">
           <button className="btn rounded-lg px-3 py-1.5 text-sm" onClick={finish}>
             ‹ Exit
           </button>
@@ -64,6 +100,7 @@ export function TutorialView({ onExit }: { onExit(): void }) {
                 entryMove={null}
                 canAct={false}
                 onMove={() => undefined}
+                variant={useRail ? "rail" : "default"}
               />
             </div>
 
@@ -87,77 +124,47 @@ export function TutorialView({ onExit }: { onExit(): void }) {
                 entryMove={entryMove}
                 canAct={tutorial.waitingForMove}
                 onMove={tutorial.movePiece}
+                variant={useRail ? "rail" : "default"}
               />
             </div>
 
-            <div className="ga-dice">
-              <div className="dice-tray flex flex-col gap-2.5 rounded-xl bg-[var(--bg-raised)] px-4 py-3">
-                {/* Dice row first — never covered by coach copy */}
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 sm:gap-4">
-                    <div className="dice-row flex items-center gap-2.5 px-1 sm:gap-3">
-                      <DieGradients />
-                      {(values ?? [0, 0, 0, 0]).map((value, i) => (
-                        <Die
-                          key={`${state.rollCount}-${i}`}
-                          value={value as 0 | 1}
-                          dim={stale || values === null}
-                          index={i}
-                          speed={settings.diceSpeed}
-                        />
-                      ))}
-                    </div>
-                    <div
-                      className={[
-                        "roll-total font-display w-8 text-center text-2xl",
-                        stale ? "text-[var(--ink-dim)]" : "text-[var(--gold)]",
-                      ].join(" ")}
-                      aria-label={total === null ? "no roll yet" : `rolled ${total}`}
-                    >
-                      {total ?? "–"}
-                    </div>
-                  </div>
-
-                  <div className="flex shrink-0 items-center gap-2">
-                    {tutorial.canRoll ? (
-                      <button
-                        className="btn btn-primary pulse-gold rounded-lg px-5 py-2 text-sm"
-                        onClick={tutorial.roll}
-                      >
-                        Roll
-                      </button>
-                    ) : null}
-                    {tutorial.canNext ? (
-                      <button
-                        className="btn btn-primary rounded-lg px-5 py-2 text-sm"
-                        onClick={tutorial.finished ? finish : tutorial.next}
-                      >
-                        {tutorial.finished ? "Finish" : "Next"}
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-
-                <AnimatePresence mode="wait">
-                  <motion.p
-                    key={tutorial.stepIndex}
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="text-sm leading-relaxed text-[var(--ink)]"
-                    role="status"
-                  >
+            <div className="ga-dice flex min-w-0 flex-col gap-1.5">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={tutorial.stepIndex}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="rounded-xl border border-[var(--gold-faint)] bg-[var(--bg-raised)] px-3 py-2"
+                  role="status"
+                >
+                  <p className="text-xs leading-snug text-[var(--ink)] sm:text-sm sm:leading-relaxed">
                     {tutorial.coach}
-                  </motion.p>
-                </AnimatePresence>
+                  </p>
+                </motion.div>
+              </AnimatePresence>
 
-                {tutorial.waitingForMove ? (
-                  <p className="text-xs text-[var(--gold)]">Tap the glowing piece</p>
-                ) : null}
-                {tutorial.guideActing ? (
-                  <p className="text-xs text-[var(--ink-dim)]">Dark is playing…</p>
-                ) : null}
-              </div>
+              <DiceTray
+                state={state}
+                tail={state.history.slice(-3)}
+                aiTurn={tutorial.guideActing}
+                humanCanRoll={tutorial.canRoll}
+                humanCanMove={tutorial.waitingForMove}
+                hintText={statusHint}
+                diceSpeed={settings.diceSpeed}
+                onRoll={onRoll}
+                compact={isTouch || layout === "horizontal"}
+                extraActions={
+                  tutorial.canNext ? (
+                    <button
+                      className="btn btn-primary rounded-lg px-4 py-1.5 text-sm"
+                      onClick={tutorial.finished ? finish : tutorial.next}
+                    >
+                      {tutorial.finished ? "Finish" : "Next"}
+                    </button>
+                  ) : null
+                }
+              />
             </div>
           </div>
         </LayoutGroup>

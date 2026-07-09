@@ -37,20 +37,17 @@ export function RoomGameScreen({
   onRematch?: () => void;
   onLeave(): void;
 }) {
-  const { layout } = useGameLayout();
+  const { layout, isTouch } = useGameLayout();
   const { settings } = useSettings();
   const state = room.state!;
 
   const entryMove = useMemo(() => room.legal.find((m) => m.from === 0) ?? null, [room.legal]);
+  const useRail = layout === "vertical" && isTouch;
 
   return (
     <MotionConfig reducedMotion={settings.motion === "reduced" ? "always" : "user"}>
-      <div
-        className={[
-          "game-screen mx-auto flex w-full max-w-3xl flex-col gap-3 px-3 py-4 sm:gap-4 sm:py-6 lg:max-w-6xl",
-        ].join(" ")}
-      >
-        <header className="game-header flex items-center justify-between">
+      <div className="game-screen mx-auto w-full max-w-3xl gap-2 px-2 py-2 sm:gap-3 sm:px-3 sm:py-4 lg:max-w-6xl lg:gap-4 lg:py-6">
+        <header className="game-header flex shrink-0 items-center justify-between">
           <button className="btn rounded-lg px-3 py-1.5 text-sm" onClick={onLeave}>
             ‹ Leave
           </button>
@@ -72,6 +69,7 @@ export function RoomGameScreen({
                 entryMove={room.mySeat === 1 && state.current === 1 ? entryMove : null}
                 canAct={room.canMove && state.current === 1}
                 onMove={room.movePiece}
+                variant={useRail ? "rail" : "default"}
               />
             </div>
             <div className="ga-board relative">
@@ -99,6 +97,7 @@ export function RoomGameScreen({
                 entryMove={room.mySeat === 0 && state.current === 0 ? entryMove : null}
                 canAct={room.canMove && state.current === 0}
                 onMove={room.movePiece}
+                variant={useRail ? "rail" : "default"}
               />
             </div>
             <div className="ga-dice">
@@ -111,6 +110,7 @@ export function RoomGameScreen({
                 diceSpeed={settings.diceSpeed}
                 hintText={notice ?? null}
                 onRoll={room.roll}
+                compact={isTouch || layout === "horizontal"}
               />
             </div>
           </div>

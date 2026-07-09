@@ -161,7 +161,7 @@ export function Board({ state, legal, canAct, onMove, orientation = "horizontal"
         {
           "--bcols": vertical ? 3 : 8,
           "--brows": vertical ? 8 : 3,
-          "--board-max-w": vertical ? "22rem" : "56rem",
+          "--board-max-w": vertical ? "min(100cqw, 30rem)" : "56rem",
         } as React.CSSProperties
       }
     >

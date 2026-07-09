@@ -13,6 +13,9 @@ All notable product changes. Format loosely follows [Keep a Changelog](https://k
 
 - **Mobile homepage** — snug single-screen accordion (no page scroll): only one mode open at a time; closed rows share remaining height; expanded panel + footer stay in view. Readable type without overflow.
 - **Desktop homepage** — `h-dvh` shell, tighter gaps/padding, smaller vignette so Begin is not clipped on laptop heights.
+- **Mobile in-game** — portrait flank layout (Dark | board | Light), larger board, compact dice/roll footer; same for tutorial + online rooms.
+- **Tutorial** — coach banner above dice; sound effects on roll/move/capture/rosette/win.
+- **Desktop horizontal** — dice tray wraps; Roll no longer overflows the sidebar card.
 - Support / tips UI remains **hidden** until custom domain + India-friendly checkout.
 
 ## [0.2.0] — 2026-07-10

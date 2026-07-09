@@ -188,12 +188,8 @@ export function GameView({
 
   return (
     <MotionConfig reducedMotion={settings.motion === "reduced" ? "always" : "user"}>
-      <div
-        className={[
-          "game-screen mx-auto flex w-full max-w-3xl flex-col gap-3 px-3 py-4 sm:gap-4 sm:py-6 lg:max-w-6xl",
-        ].join(" ")}
-      >
-        <header className="game-header flex items-center justify-between">
+      <div className="game-screen mx-auto w-full max-w-3xl gap-2 px-2 py-2 sm:gap-3 sm:px-3 sm:py-4 lg:max-w-6xl lg:gap-4 lg:py-6">
+        <header className="game-header flex shrink-0 items-center justify-between">
           <button className="btn rounded-lg px-3 py-1.5 text-sm" onClick={onExit}>
             ‹ Menu
           </button>
@@ -241,6 +237,7 @@ export function GameView({
                 entryMove={state.current === 1 ? entryMoves[1] : null}
                 canAct={game.humanCanMove && state.current === 1}
                 onMove={game.movePiece}
+                variant={layout === "vertical" && isTouch ? "rail" : "default"}
               />
             </div>
 
@@ -294,6 +291,7 @@ export function GameView({
                 entryMove={state.current === 0 ? entryMoves[0] : null}
                 canAct={game.humanCanMove && state.current === 0}
                 onMove={game.movePiece}
+                variant={layout === "vertical" && isTouch ? "rail" : "default"}
               />
             </div>
 
@@ -308,6 +306,7 @@ export function GameView({
                 onHint={hintsEnabled ? requestHint : undefined}
                 diceSpeed={settings.diceSpeed}
                 onRoll={game.roll}
+                compact={isTouch || layout === "horizontal"}
               />
             </div>
           </div>
