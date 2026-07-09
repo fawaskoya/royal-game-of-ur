@@ -13,7 +13,6 @@ import { TutorialView } from "./TutorialView";
 import { SettingsPanel } from "./SettingsPanel";
 import { StatsPanel } from "./StatsPanel";
 import { LeaderboardPanel } from "./LeaderboardPanel";
-import { SupportPanel } from "./SupportPanel";
 import { ReplayViewer } from "./ReplayViewer";
 import { ArchivePanel } from "./ArchivePanel";
 import { OnlineRoomView } from "./OnlineRoomView";
@@ -171,7 +170,6 @@ export function GameApp() {
   const [boardOpen, setBoardOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
-  const [supportOpen, setSupportOpen] = useState(false);
   const [tutorialActive, setTutorialActive] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [roomActive, setRoomActive] = useState(false);
@@ -382,9 +380,6 @@ export function GameApp() {
       <button className={["btn rounded-lg text-sm", compact ? "px-2.5 py-1 text-xs" : "px-4 py-1.5"].join(" ")} onClick={() => fileInputRef.current?.click()}>
         Import
       </button>
-      <button className={["btn rounded-lg text-sm", compact ? "px-2.5 py-1 text-xs" : "px-4 py-1.5"].join(" ")} onClick={() => setSupportOpen(true)}>
-        Support
-      </button>
     </>
   );
 
@@ -394,7 +389,6 @@ export function GameApp() {
       <LeaderboardPanel open={boardOpen} onClose={() => setBoardOpen(false)} />
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <ArchivePanel open={archiveOpen} onClose={() => setArchiveOpen(false)} />
-      <SupportPanel open={supportOpen} onClose={() => setSupportOpen(false)} />
       <HowToPlay
         open={guideOpen}
         onClose={() => setGuideOpen(false)}

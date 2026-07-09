@@ -17,7 +17,8 @@ scope), Root Directory set to `apps/web` (monorepo-aware), Deployment Protection
 
 Remaining:
 1. **[founder]** Domain (e.g. `royalgameofur.app` / `playur.game`, ~$10–20/yr) + attach in
-   Vercel → Settings → Domains.
+   Vercel → Settings → Domains. **Then** enable donations via India-friendly MoR (e.g. Dodo);
+   Support UI is currently **hidden**.
 2. **[founder, optional]** Connect the GitHub repo in Vercel → Settings → Git for auto-deploy on
    push (currently deploys are manual via `vercel --prod`) — needs authorizing the Vercel
    GitHub App, an OAuth-style grant only the founder can approve.
@@ -30,6 +31,9 @@ Remaining:
 
 **Definition of done:** public URL ✓, installable on desktop/Android/iOS Home Screen (PWA),
 analytics counting, single-player + same-device rooms working ✓.
+
+**Also live (2026-07-10):** matchmaking, email+anonymous accounts, richer ladder, mobile
+compact menu — see [CHANGELOG.md](../CHANGELOG.md).
 
 ## Phase L2 — Online multiplayer + real leaderboards (v1.1)
 

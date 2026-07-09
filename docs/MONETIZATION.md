@@ -2,16 +2,16 @@
 
 Core play stays free: no ads, no pay-to-win, server dice and Elo stay fair for everyone.
 
-## Now — tips (Stripe)
+## Status (2026-07-10)
 
-| Path | When to use |
-|------|-------------|
-| **Payment Link** | Fastest. Create a “Donate” link in [Stripe Dashboard → Payment Links](https://dashboard.stripe.com/payment-links). Set `NEXT_PUBLIC_STRIPE_DONATE_URL` on Vercel. |
-| **Checkout API** | Fixed tip amounts ($3 / $5 / $10) via `POST /api/donate`. Needs `STRIPE_SECRET_KEY` (+ optional `NEXT_PUBLIC_SITE_URL`). |
+- **Support / tip UI is hidden** in the shipped app until a **custom domain** is attached and an **India-friendly** checkout is ready.
+- **Stripe** and **Buy Me a Coffee** do not work for receiving as an individual in India (Stripe invite-only / creator platforms blocked).
+- Planned path after domain: **Merchant of Record** such as [Dodo Payments](https://dodopayments.com/) (PAN for individuals; global cards) or Lemon Squeezy with PayPal payouts if available.
+- Wire-up will reuse a single public env, e.g. `NEXT_PUBLIC_DONATE_URL`, and re-enable the Support control in the menu.
 
-UI: menu → **Support** (also on mobile compact bar).
+Code kept offline for later: `apps/web/components/SupportPanel.tsx`, `apps/web/app/api/donate/route.ts` (Stripe Checkout optional; not required if using an MoR payment link).
 
-## Next — cosmetics (not power)
+## Later — cosmetics (not power)
 
 Sell presentation only; never affect dice, matchmaking, or legality.
 
@@ -20,16 +20,10 @@ Sell presentation only; never affect dice, matchmaking, or legality.
 3. **Piece skins** — ivory / basalt / gem accents.
 4. **Profile flair** — handle frame, badge (cosmetic ranks from seasons).
 
-Suggested stack later: Stripe Checkout + Supabase `entitlements` table (profile_id, sku, granted_at); client reads owned SKUs and applies CSS themes. Grant once; no consumables that buy wins.
-
-## Later — optional
-
-- Season pass (cosmetics bundle + cosmetics currency)
-- Private tournament hosting (paid room, still fair rules)
-- Sponsor / education licenses for classrooms
+Suggested stack: MoR checkout + Supabase `entitlements` (profile_id, sku, granted_at); client reads owned SKUs and applies CSS themes.
 
 ## Principles
 
 - Ranked & casual ladders never gated by payment.
-- Guests can still play and tip anonymously.
+- Guests can still play.
 - Cosmetic purchases never alter RNG or engine rules.

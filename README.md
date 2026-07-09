@@ -1,60 +1,99 @@
 # Royal Game of Ur
 
-The definitive digital version of the world's oldest playable board game (c. 2600 BCE) — built to the standard of premium chess and backgammon platforms: historically authentic rules, honest AI opponents, verified replays, and (eventually) competitive online play.
+The definitive digital version of the world's oldest playable board game (c. 2600 BCE) — historically authentic rules, honest AI, verified replays, online rooms, global matchmaking, and a real Elo ladder.
 
-**Vision:** the player should feel like they are touching an ancient artifact brought into the modern world. See [docs/MASTER_SPEC.md](docs/MASTER_SPEC.md).
+**Play:** [royal-game-of-ur-zeta.vercel.app](https://royal-game-of-ur-zeta.vercel.app)  
+**Vision:** [docs/MASTER_SPEC.md](docs/MASTER_SPEC.md) · **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
-## Status — Phase 1 complete
+## Status
 
 | Piece | State |
 | --- | --- |
-| `@ur/engine` — pure deterministic rules engine (Finkel rules, variants, verified replay, undo, serialization) | ✅ 48 tests |
-| `@ur/ai` — difficulty ladder: beginner → expert (expectimax over true dice odds; never cheats) | ✅ 14 tests, monotonic ladder |
-| `@ur/cli` — demo / sim / bench terminal runner | ✅ |
-| `@ur/web` — playable local game (PvP, vs AI, AI vs AI) with animated board | ✅ functional; visual-polish phase pending |
-| Online multiplayer, accounts, rankings | 📋 designed in [docs/ONLINE_ARCHITECTURE.md](docs/ONLINE_ARCHITECTURE.md), not started |
-
-See [docs/ROADMAP.md](docs/ROADMAP.md) for phases and [docs/TASKS.md](docs/TASKS.md) for the live backlog.
+| `@ur/engine` — deterministic Finkel rules, variants, verified replay | ✅ tested |
+| `@ur/ai` — beginner → master expectimax ladder (never cheats) | ✅ tested |
+| `@ur/cli` — demo / sim / bench | ✅ |
+| `@ur/web` — Next.js client (local + online) | ✅ live on Vercel |
+| Private online rooms (4-letter codes, server dice) | ✅ |
+| Global casual matchmaking + email/anonymous accounts | ✅ |
+| Server Elo leaderboard (W–L, win%, last active) | ✅ |
+| Interactive tutorial (to bear-off) | ✅ |
+| Compact mobile homepage | ✅ |
+| Custom domain + donations | 📋 after domain (Support UI hidden) |
+| Cosmetics (boards / dice) | 📋 planned — [docs/MONETIZATION.md](docs/MONETIZATION.md) |
 
 ## Quickstart
 
 ```bash
 pnpm install
-pnpm test          # full test suite (engine + ai)
-pnpm demo          # watch a narrated expert-vs-medium game in the terminal
-pnpm sim -- --games 100 --p0 hard --p1 beginner
-pnpm bench         # validate the whole difficulty ladder
-pnpm dev           # web client at http://localhost:3000
+pnpm test              # engine + ai + web unit tests
+pnpm --filter @ur/web typecheck
+pnpm dev               # web client → http://localhost:3000
+pnpm demo              # narrated terminal game
+```
+
+### Local web env (online play)
+
+Copy keys into `apps/web/.env.local` (never commit):
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_REF.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_…
+SUPABASE_SECRET_KEY=sb_secret_…   # server/tooling only; not required for client play
+```
+
+Enable **Anonymous** and **Email** providers in Supabase Auth. Without env, single-player and same-device rooms still work.
+
+### Supabase (linked project)
+
+```bash
+export SUPABASE_ACCESS_TOKEN=sbp_…   # account access token, not the project secret
+npx supabase db push --linked
+npx supabase functions deploy game-move --project-ref YOUR_REF
+```
+
+Migrations live under `supabase/migrations/` (`0001` … `0006`).
+
+### Deploy web
+
+```bash
+# from repo root (Vercel Root Directory = apps/web)
+vercel deploy --prod --yes
 ```
 
 ## Structure
 
 ```
-packages/engine    Pure rules engine. Zero deps, zero UI. Every move in every
-                   client goes through here — gameplay is never hardcoded elsewhere.
-packages/ai        Agents (random / greedy / expectimax) + match runner.
-apps/cli           Terminal demo, simulator, ladder benchmark.
-apps/web           Next.js client (React 19, Tailwind 4, Framer Motion).
-docs/              Master spec, rules, AI design, online architecture, UI/UX,
-                   roadmap, tasks, ADRs.
+packages/engine    Pure rules. Zero UI. Every client move goes through here.
+packages/ai        Agents + difficulty ladder + match runner.
+apps/cli           Terminal demo / sim / bench.
+apps/web           Next.js 15, React 19, Tailwind 4, Framer Motion.
+supabase/          SQL migrations + game-move Edge Function.
+docs/              Specs, architecture, UI, roadmap, ADRs.
 ```
 
 ## Documentation
 
 | Doc | Purpose |
 | --- | --- |
-| [MASTER_SPEC.md](docs/MASTER_SPEC.md) | The full product vision — the source of truth for scope and priorities |
-| [GAME_RULES.md](docs/GAME_RULES.md) | Exact rules as implemented: board, path, dice, captures, rosettes, variants |
-| [AI_ENGINE.md](docs/AI_ENGINE.md) | Evaluation, search, difficulty ladder, path to MCTS/NN tiers |
-| [ONLINE_ARCHITECTURE.md](docs/ONLINE_ARCHITECTURE.md) | Server-authoritative multiplayer design (future phase) |
-| [UI_UX.md](docs/UI_UX.md) | Design language, interaction spec, animation principles, accessibility |
-| [ROADMAP.md](docs/ROADMAP.md) | Phases with completion criteria |
-| [TASKS.md](docs/TASKS.md) | Actionable backlog per subsystem |
-| [docs/adr/](docs/adr/) | Architectural decision records |
+| [CHANGELOG.md](CHANGELOG.md) | Release notes |
+| [MASTER_SPEC.md](docs/MASTER_SPEC.md) | Product vision |
+| [GAME_RULES.md](docs/GAME_RULES.md) | Rules as implemented |
+| [MATCHMAKING.md](docs/MATCHMAKING.md) | Casual pool + accounts |
+| [ONLINE_ARCHITECTURE.md](docs/ONLINE_ARCHITECTURE.md) | Server-authoritative multiplayer |
+| [LEADERBOARDS_AND_STATS.md](docs/LEADERBOARDS_AND_STATS.md) | Ladder + local stats |
+| [MONETIZATION.md](docs/MONETIZATION.md) | Tips later (India-friendly MoR) + cosmetics |
+| [GO_LIVE_PLAN.md](docs/GO_LIVE_PLAN.md) | Web → stores sequencing |
+| [ROADMAP.md](docs/ROADMAP.md) · [TASKS.md](docs/TASKS.md) | Phases and backlog |
+| [docs/adr/](docs/adr/) | Architectural decisions |
 
 ## Engineering invariants
 
-1. **The engine is law.** All legality, captures, rosettes, and win detection live in `@ur/engine`. UIs and AIs only call it.
-2. **Determinism.** Dice are *inputs* to transitions. Same events ⇒ same state, bit for bit — which is what makes replays verifiable and servers authoritative.
-3. **Immutability.** `GameState` is frozen plain data; every transition returns a new state.
-4. **No temporary hacks.** If a better design appears mid-build, it goes through an ADR first.
+1. **The engine is law.** Legality, captures, rosettes, and wins live only in `@ur/engine`.
+2. **Determinism.** Dice are inputs. Same events ⇒ same state — replays and server authority depend on it.
+3. **Immutability.** `GameState` is frozen plain data; transitions return new state.
+4. **Server rolls online dice.** Clients never invent multiplayer rolls; Edge Function validates every move.
+5. **No pay-to-win.** Future cosmetics never alter rules or RNG.
+
+## License
+
+Private / all rights reserved unless otherwise stated.
