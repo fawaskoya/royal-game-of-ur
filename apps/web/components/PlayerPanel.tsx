@@ -38,8 +38,10 @@ export function PlayerPanel({ state, player, controller, active, entryMove, canA
   return (
     <div
       className={[
-        "player-panel flex flex-col gap-1.5 rounded-xl px-3 py-2 sm:px-4",
-        active ? "player-panel--active bg-[var(--bg-raised)] ring-1 ring-[var(--gold-soft)]" : "",
+        "player-panel flex flex-col gap-1.5 rounded-xl border px-3 py-2 sm:px-4",
+        active
+          ? "player-panel--active border-[var(--frame-edge)] bg-[var(--bg-raised)] ring-1 ring-[var(--gold-soft)]"
+          : "border-transparent bg-[var(--bg-raised)]/40",
       ].join(" ")}
     >
       <div className="flex items-center justify-between gap-3">
