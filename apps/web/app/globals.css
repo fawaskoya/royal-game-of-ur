@@ -102,6 +102,20 @@ body {
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35), 0 0 24px var(--gold-faint);
 }
 
+/* Gilded card: the "your game is waiting" bookmark — a gold-washed surface
+   that reads as precious against the night-blue page (and against parchment
+   in the light theme), instead of vanishing into it. */
+.card--gilded {
+  background: linear-gradient(135deg, rgba(201, 162, 75, 0.22) 0%, rgba(201, 162, 75, 0.1) 55%, rgba(201, 162, 75, 0.16) 100%);
+  border-color: var(--gold-soft);
+  box-shadow: inset 0 1px 0 rgba(255, 235, 190, 0.14), 0 6px 24px rgba(0, 0, 0, 0.25);
+}
+
+.card--gilded:hover {
+  border-color: var(--gold);
+  box-shadow: inset 0 1px 0 rgba(255, 235, 190, 0.14), 0 0 28px rgba(201, 162, 75, 0.28);
+}
+
 /* Menu backdrop: layered glows + a colossal rosette watermark, fixed so the
    scene stays still while content scrolls. */
 .menu-shell {
@@ -271,6 +285,38 @@ body {
 /* The hint engine's suggested piece breathes gold. */
 .piece-hint {
   animation: pulse-gold 1.2s ease-in-out infinite;
+}
+
+/* Start-pool “box”: glows when an entry move is legal (whole game + tutorial). */
+.piece-pool--selectable {
+  background: color-mix(in srgb, var(--gold) 14%, transparent);
+  box-shadow:
+    0 0 0 2px var(--gold),
+    0 0 18px var(--gold-soft),
+    inset 0 0 12px var(--gold-faint);
+  animation: pool-selectable-pulse 1.35s ease-in-out infinite;
+}
+
+@keyframes pool-selectable-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px var(--gold),
+      0 0 14px var(--gold-soft),
+      inset 0 0 10px var(--gold-faint);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px var(--gold-bright),
+      0 0 26px var(--gold-soft),
+      inset 0 0 16px var(--gold-faint);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .piece-pool--selectable {
+    animation: none;
+  }
 }
 
 /* Small metadata chip (controller, counts). */

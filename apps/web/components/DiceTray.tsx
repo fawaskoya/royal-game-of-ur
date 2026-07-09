@@ -18,7 +18,7 @@ const SPEED_CONFIG: Record<DiceSpeed, { rotate: number; stiffness: number; dampi
 
 /** Shared gradient defs for all dice on the page — rendered once so multiple
  * <Die> instances don't each declare colliding duplicate element ids. */
-function DieGradients() {
+export function DieGradients() {
   return (
     <svg width="0" height="0" aria-hidden className="absolute">
       <defs>
@@ -37,7 +37,7 @@ function DieGradients() {
 
 /** A simple two-face pyramid silhouette — a tasteful, legible stand-in for a
  * tetrahedral die (true 3D pip layout isn't worth the complexity at this size). */
-function Die({ value, dim, index, speed }: { value: 0 | 1; dim: boolean; index: number; speed: DiceSpeed }) {
+export function Die({ value, dim, index, speed }: { value: 0 | 1; dim: boolean; index: number; speed: DiceSpeed }) {
   const cfg = SPEED_CONFIG[speed];
   return (
     <motion.div

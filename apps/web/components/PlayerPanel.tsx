@@ -68,9 +68,12 @@ export function PlayerPanel({ state, player, controller, active, entryMove, canA
 
       <div className="flex items-center justify-between gap-3">
         <button
+          type="button"
           className={[
-            "flex min-h-6 items-center gap-1 rounded-lg px-1.5 py-1",
-            entryPlayable ? "cursor-pointer ring-1 ring-[var(--gold)]" : "cursor-default",
+            "piece-pool flex min-h-6 items-center gap-1 rounded-lg px-1.5 py-1.5 transition-[box-shadow,background-color] duration-150",
+            entryPlayable
+              ? "piece-pool--selectable cursor-pointer"
+              : "cursor-default",
           ].join(" ")}
           disabled={!entryPlayable}
           onClick={() => entryMove && onMove(entryMove)}

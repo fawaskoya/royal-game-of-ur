@@ -16,12 +16,13 @@ import { LeaderboardPanel } from "./LeaderboardPanel";
 import { ReplayViewer } from "./ReplayViewer";
 import { ArchivePanel } from "./ArchivePanel";
 import { OnlineRoomView } from "./OnlineRoomView";
+import { MatchmakingView } from "./MatchmakingView";
 import { MenuVignette } from "./MenuVignette";
 import { loadTutorialProgress } from "@/lib/useTutorial";
 import { loadResults } from "@/lib/stats/matchResults";
 import { isOnlineConfigured } from "@/lib/multiplayer/supabaseClient";
 
-type MenuChoice = "ai" | "pvp" | "watch" | "room";
+type MenuChoice = "ai" | "pvp" | "watch" | "room" | "tutorial" | "match";
 
 function difficultyLabel(id: DifficultyId): string {
   return DIFFICULTIES.find((d) => d.id === id)?.label ?? id;
@@ -91,9 +92,33 @@ function IconGlobe() {
   );
 }
 
+function IconScroll() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="var(--gold)" strokeWidth="1.5" strokeLinejoin="round" aria-hidden>
+      <path d="M7 4.5 h9 a2 2 0 0 1 2 2 v11 a1.5 1.5 0 0 1 -1.5 1.5 H8.5 A1.5 1.5 0 0 1 7 17.5 V4.5 Z" />
+      <path d="M7 4.5 A2 2 0 0 0 5 6.5 V18" opacity="0.55" />
+      <path d="M10 9 h6 M10 12.5 h6 M10 16 h4" opacity="0.7" />
+    </svg>
+  );
+}
+
+function IconMatch() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="var(--gold)" strokeWidth="1.5" aria-hidden>
+      <circle cx="8" cy="10" r="3.2" />
+      <circle cx="16" cy="10" r="3.2" />
+      <path d="M4.5 18 c1.2 -2.5 3 -3.5 3.5 -3.5 s2.3 1 3.5 3.5" opacity="0.75" />
+      <path d="M12.5 18 c1.2 -2.5 3 -3.5 3.5 -3.5 s2.3 1 3.5 3.5" opacity="0.75" />
+      <path d="M11 10 h2" opacity="0.5" />
+    </svg>
+  );
+}
+
 const MODE_CARDS: { id: MenuChoice; title: string; blurb: string; icon: () => React.ReactNode }[] = [
+  { id: "tutorial", title: "Learn to play", blurb: "Interactive first game on a live board.", icon: IconScroll },
   { id: "ai", title: "Play the machine", blurb: "Six honest tiers, none of them cheat.", icon: IconDie },
   { id: "pvp", title: "Two players", blurb: "Pass and play at one screen.", icon: IconTwoPieces },
+  { id: "match", title: "Find a match", blurb: "Play someone online — casual Elo ladder.", icon: IconMatch },
   { id: "room", title: "Private room", blurb: "A 4-letter code, any two devices.", icon: IconGlobe },
   { id: "watch", title: "Watch AI vs AI", blurb: "Set two engines against each other.", icon: IconEye },
 ];
@@ -146,6 +171,7 @@ export function GameApp() {
   const [tutorialActive, setTutorialActive] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [roomActive, setRoomActive] = useState(false);
+  const [matchActive, setMatchActive] = useState(false);
   const [firstRun, setFirstRun] = useState(false);
   const [importedReplay, setImportedReplay] = useState<Replay | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
@@ -155,11 +181,13 @@ export function GameApp() {
   // auto-saves, so returning from a live game brings its save with it.
   // First-run detection nudges newcomers toward the tutorial.
   useEffect(() => {
-    if (mode === null && !tutorialActive) {
+    if (mode === null && !tutorialActive && !matchActive && !roomActive) {
       setSaved(loadGame());
-      setFirstRun(!loadTutorialProgress().completed && loadResults().length === 0);
+      const isFirst = !loadTutorialProgress().completed && loadResults().length === 0;
+      setFirstRun(isFirst);
+      if (isFirst) setChoice("tutorial");
     }
-  }, [mode, tutorialActive]);
+  }, [mode, tutorialActive, matchActive, roomActive]);
 
   useEffect(() => {
     if (!importError) return;
@@ -179,6 +207,10 @@ export function GameApp() {
 
   if (tutorialActive) {
     return <TutorialView onExit={() => setTutorialActive(false)} />;
+  }
+
+  if (matchActive) {
+    return <MatchmakingView onExit={() => setMatchActive(false)} />;
   }
 
   if (roomActive) {
@@ -213,6 +245,14 @@ export function GameApp() {
   };
 
   const start = () => {
+    if (choice === "tutorial") {
+      setTutorialActive(true);
+      return;
+    }
+    if (choice === "match") {
+      setMatchActive(true);
+      return;
+    }
     if (choice === "room") {
       setRoomActive(true);
       return;
@@ -230,14 +270,58 @@ export function GameApp() {
 
   const selectedInfo = DIFFICULTIES.find((d) => d.id === difficulty);
 
+  const secondaryLinks = (
+    <>
+      <button
+        className={[
+          "btn rounded-lg px-4 py-1.5 text-sm",
+          firstRun ? "pulse-gold ring-1 ring-[var(--gold)]" : "",
+        ].join(" ")}
+        onClick={() => setGuideOpen(true)}
+      >
+        How to play
+      </button>
+      <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => setArchiveOpen(true)}>
+        Replays
+      </button>
+      <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => setStatsOpen(true)}>
+        Stats
+      </button>
+      {isOnlineConfigured() ? (
+        <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => setBoardOpen(true)}>
+          Leaderboard
+        </button>
+      ) : null}
+      <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => setSettingsOpen(true)}>
+        Settings
+      </button>
+      <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => fileInputRef.current?.click()}>
+        Import replay
+      </button>
+    </>
+  );
+
   return (
-    <main className="menu-shell mx-auto flex min-h-dvh w-full max-w-6xl flex-col justify-center gap-10 px-5 py-12 lg:px-8">
-      <section className="grid items-center gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
-        <div className="flex flex-col gap-5 text-center lg:text-left">
+    <main className="menu-shell mx-auto flex min-h-dvh w-full max-w-6xl flex-col justify-center gap-8 px-5 py-10 lg:py-8 lg:px-8">
+      {/* Always-mounted so desktop + mobile Import both work */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="application/json,.json"
+        className="sr-only"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (file) void handleReplayFile(file);
+        }}
+      />
+
+      <section className="grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-x-10 lg:items-start">
+        <div className="flex flex-col gap-5 text-center lg:text-left lg:pt-2">
           <div className="text-xs uppercase tracking-[0.35em] text-[var(--ink-dim)]">
             ✦&ensp;c. 2600 BCE · Mesopotamia&ensp;✦
           </div>
-          <h1 className="font-display gold-text text-5xl leading-tight sm:text-6xl">
+          <h1 className="font-display gold-text text-4xl leading-tight sm:text-5xl lg:text-6xl">
             Royal Game
             <br />
             of Ur
@@ -250,7 +334,7 @@ export function GameApp() {
 
           {saved ? (
             <button
-              className="card group w-full rounded-xl px-4 py-3 text-left ring-1 ring-[var(--gold-soft)]"
+              className="card card--gilded group w-full rounded-xl px-4 py-3 text-left"
               onClick={continueGame}
             >
               <div className="flex items-center justify-between gap-3">
@@ -266,126 +350,121 @@ export function GameApp() {
               </div>
             </button>
           ) : null}
+
+          <div className="ornament-rule mt-1 hidden text-xs lg:flex">✦</div>
+          <div className="hidden flex-wrap gap-2 lg:flex">{secondaryLinks}</div>
+          {importError ? <p className="hidden text-xs text-[var(--danger)] lg:block">{importError}</p> : null}
+          <footer className="hidden text-xs text-[var(--ink-dim)] lg:block">
+            Classic Irving Finkel rules · British Museum reconstruction
+          </footer>
         </div>
 
-        <div className="hidden lg:block">
-          <MenuVignette />
-        </div>
-      </section>
-
-      <section className="mx-auto w-full max-w-3xl">
-        <div className="grid gap-3 sm:grid-cols-2">
-          {MODE_CARDS.map((card) => (
-            <button
-              key={card.id}
-              className={[
-                "card btn w-full rounded-xl px-4 py-3.5 text-left",
-                choice === card.id ? "ring-1 ring-[var(--gold)]" : "",
-              ].join(" ")}
-              onClick={() => setChoice(card.id)}
-              aria-pressed={choice === card.id}
-            >
-              <div className="flex items-start gap-3">
-                <span className="mt-0.5 shrink-0 opacity-80">{card.icon()}</span>
-                <span>
-                  <span className="font-display block">
-                    {card.title}
-                    {card.id === "room" ? (
-                      <span className="chip ml-2 align-middle">{isOnlineConfigured() ? "online" : "same device"}</span>
-                    ) : null}
+        <div className="flex min-w-0 flex-col gap-4">
+          {/* Vignette scales down on short laptop viewports so Begin never clips */}
+          <div className="hidden lg:block lg:max-h-[min(220px,28vh)] lg:overflow-hidden">
+            <MenuVignette />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {MODE_CARDS.map((card) => (
+              <button
+                key={card.id}
+                className={[
+                  "card btn w-full rounded-xl px-4 py-3.5 text-left",
+                  choice === card.id ? "ring-1 ring-[var(--gold)]" : "",
+                  firstRun && card.id === "tutorial" && choice === "tutorial" ? "card--gilded" : "",
+                ].join(" ")}
+                onClick={() => setChoice(card.id)}
+                aria-pressed={choice === card.id}
+              >
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 shrink-0 opacity-80">{card.icon()}</span>
+                  <span>
+                    <span className="font-display block">
+                      {card.title}
+                      {card.id === "room" ? (
+                        <span className="chip ml-2 align-middle">
+                          {isOnlineConfigured() ? "online" : "same device"}
+                        </span>
+                      ) : null}
+                      {card.id === "match" && isOnlineConfigured() ? (
+                        <span className="chip ml-2 align-middle">live</span>
+                      ) : null}
+                    </span>
+                    <span className="mt-0.5 block text-xs text-[var(--ink-dim)]">{card.blurb}</span>
                   </span>
-                  <span className="mt-0.5 block text-xs text-[var(--ink-dim)]">{card.blurb}</span>
-                </span>
-              </div>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <div className="card flex flex-col gap-3 rounded-xl p-4">
+            {choice === "ai" ? (
+              <>
+                <DifficultySelect id="difficulty" label="Opponent" value={difficulty} onChange={setDifficulty} />
+                {selectedInfo ? <p className="text-xs text-[var(--ink-dim)]">{selectedInfo.description}</p> : null}
+                <label className="flex items-center justify-between gap-3 text-sm" htmlFor="seat">
+                  <span className="text-[var(--ink-dim)]">You play</span>
+                  <select
+                    id="seat"
+                    className="btn rounded-lg px-3 py-1.5 text-sm"
+                    value={seat}
+                    onChange={(e) => setSeat(Number(e.target.value) as PlayerId)}
+                  >
+                    <option value={0}>Light (first)</option>
+                    <option value={1}>Dark (second)</option>
+                  </select>
+                </label>
+              </>
+            ) : null}
+            {choice === "watch" ? (
+              <>
+                <DifficultySelect id="light-ai" label="Light engine" value={lightAi} onChange={setLightAi} />
+                <DifficultySelect id="dark-ai" label="Dark engine" value={darkAi} onChange={setDarkAi} />
+              </>
+            ) : null}
+            {choice === "pvp" ? (
+              <p className="text-xs text-[var(--ink-dim)]">
+                Light rolls first. Rosettes (the gold flowers) grant another throw; the central rosette is safe ground.
+              </p>
+            ) : null}
+            {choice === "room" ? (
+              <p className="text-xs text-[var(--ink-dim)]">
+                {isOnlineConfigured()
+                  ? "Create a room and share its 4-letter code — your opponent joins from any device. The server throws the dice and checks every move."
+                  : "Two windows of this browser, one board. Create a room in one window, join with the code from the other."}
+              </p>
+            ) : null}
+            {choice === "tutorial" ? (
+              <p className="text-xs text-[var(--ink-dim)]">
+                A guided opening on the real rules engine — forced dice, live captures and rosettes. You play Light;
+                the guide plays Dark. About two minutes.
+              </p>
+            ) : null}
+            {choice === "match" ? (
+              <p className="text-xs text-[var(--ink-dim)]">
+                {isOnlineConfigured()
+                  ? "Casual Elo matchmaking against anyone online. Guests can play; sign up to keep your rating. Server rolls the dice."
+                  : "Online matchmaking needs Supabase env keys in this build. Private rooms still work locally."}
+              </p>
+            ) : null}
+
+            <button className="btn btn-primary mt-1 rounded-lg px-5 py-2.5" onClick={start}>
+              {choice === "room"
+                ? "Enter the lobby"
+                : choice === "tutorial"
+                  ? "Start tutorial"
+                  : choice === "match"
+                    ? "Find match"
+                    : "Begin"}
             </button>
-          ))}
-        </div>
-
-        <div className="card mt-3 flex flex-col gap-3 rounded-xl p-4">
-          {choice === "ai" ? (
-            <>
-              <DifficultySelect id="difficulty" label="Opponent" value={difficulty} onChange={setDifficulty} />
-              {selectedInfo ? <p className="text-xs text-[var(--ink-dim)]">{selectedInfo.description}</p> : null}
-              <label className="flex items-center justify-between gap-3 text-sm" htmlFor="seat">
-                <span className="text-[var(--ink-dim)]">You play</span>
-                <select
-                  id="seat"
-                  className="btn rounded-lg px-3 py-1.5 text-sm"
-                  value={seat}
-                  onChange={(e) => setSeat(Number(e.target.value) as PlayerId)}
-                >
-                  <option value={0}>Light (first)</option>
-                  <option value={1}>Dark (second)</option>
-                </select>
-              </label>
-            </>
-          ) : null}
-          {choice === "watch" ? (
-            <>
-              <DifficultySelect id="light-ai" label="Light engine" value={lightAi} onChange={setLightAi} />
-              <DifficultySelect id="dark-ai" label="Dark engine" value={darkAi} onChange={setDarkAi} />
-            </>
-          ) : null}
-          {choice === "pvp" ? (
-            <p className="text-xs text-[var(--ink-dim)]">
-              Light rolls first. Rosettes (the gold flowers) grant another throw; the central rosette is safe ground.
-            </p>
-          ) : null}
-          {choice === "room" ? (
-            <p className="text-xs text-[var(--ink-dim)]">
-              {isOnlineConfigured()
-                ? "Create a room and share its 4-letter code — your opponent joins from any device. The server throws the dice and checks every move."
-                : "Two windows of this browser, one board. Create a room in one window, join with the code from the other."}
-            </p>
-          ) : null}
-
-          <button className="btn btn-primary mt-1 rounded-lg px-5 py-2.5" onClick={start}>
-            {choice === "room" ? "Enter the lobby" : "Begin"}
-          </button>
+          </div>
         </div>
       </section>
 
-      <section className="flex flex-col items-center gap-4">
+      {/* Mobile-only secondary row (desktop links live in the left column). */}
+      <section className="flex flex-col items-center gap-4 lg:hidden">
         <div className="ornament-rule w-full max-w-3xl text-xs">✦</div>
-        <div className="flex flex-wrap justify-center gap-2">
-          <button
-            className={[
-              "btn rounded-lg px-4 py-1.5 text-sm",
-              firstRun ? "pulse-gold ring-1 ring-[var(--gold)]" : "",
-            ].join(" ")}
-            onClick={() => setGuideOpen(true)}
-          >
-            How to play
-          </button>
-          <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => setArchiveOpen(true)}>
-            Replays
-          </button>
-          <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => setStatsOpen(true)}>
-            Stats
-          </button>
-          {isOnlineConfigured() ? (
-            <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => setBoardOpen(true)}>
-              Leaderboard
-            </button>
-          ) : null}
-          <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => setSettingsOpen(true)}>
-            Settings
-          </button>
-          <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => fileInputRef.current?.click()}>
-            Import replay
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="application/json,.json"
-            className="sr-only"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              e.target.value = "";
-              if (file) void handleReplayFile(file);
-            }}
-          />
-        </div>
+        <div className="flex flex-wrap justify-center gap-2">{secondaryLinks}</div>
         {importError ? <p className="text-center text-xs text-[var(--danger)]">{importError}</p> : null}
         <footer className="text-center text-xs text-[var(--ink-dim)]">
           Classic Irving Finkel rules · British Museum reconstruction

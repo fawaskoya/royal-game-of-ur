@@ -228,14 +228,14 @@ function OnlineFlow({ onExit, onSwitchWire }: { onExit(): void; onSwitchWire(): 
 
   return (
     <Lobby
-      heading="Play online"
+      heading="Private room"
       blurb={
         <>
-          Live across any two devices. The server throws the dice and checks every move —
-          nobody can cheat, not even the host.
+          Invite a friend with a 4-letter code. The server throws the dice and checks every move —
+          nobody can cheat, not even the host. For strangers worldwide, use <strong>Find a match</strong> on the menu.
         </>
       }
-      hostLabel="Create an online room"
+      hostLabel="Create a private room"
       hostBlurb="You play Light and share a 4-letter code."
       room={room}
       joinCode={joinCode}

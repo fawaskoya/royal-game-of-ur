@@ -90,23 +90,54 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
     action: { kind: "roll", total: 1 },
   },
   {
-    coach: "Move onto the central rosette — the safest square on the board.",
+    coach: "Tap your piece on the shared lane — it will step onto the central rosette, the safest square on the board.",
     action: { kind: "move", from: 7 },
   },
   {
     coach:
-      "From here the race continues around to your exit lane. Bearing off needs the exact throw — a piece two squares from home leaves only on a 2. First to bring all seven home wins.",
-    action: { kind: "next" },
+      "Rosette again — extra throw. The shared lane runs to the far end; from there you peel into your private exit lane. Roll a four.",
+    action: { kind: "roll", total: 4 },
+  },
+  {
+    coach: "Push your piece down the shared lane toward the exit.",
+    action: { kind: "move", from: 8 },
+  },
+  {
+    coach: "Dark inches forward on their private lane — not a threat yet.",
+    action: { kind: "auto", roll: 2, from: 1 },
   },
   {
     coach:
-      "You know everything the board demands: enter, chain rosettes, fight for the shared lane, hold the center, and count your exits. Play your first real game — Beginner is waiting.",
+      "Your piece is deep. Roll a two to step onto your exit lane — the last private stretch before home.",
+    action: { kind: "roll", total: 2 },
+  },
+  {
+    coach: "Move onto the exit-lane rosette. One more exact throw and this piece is home.",
+    action: { kind: "move", from: 12 },
+  },
+  {
+    coach:
+      "Bearing off needs the exact count — you are one square from home, so only a one will do. Roll!",
+    action: { kind: "roll", total: 1 },
+  },
+  {
+    coach: "Exact throw. Tap your piece to bear it off — it leaves the board for good.",
+    action: { kind: "move", from: 14 },
+  },
+  {
+    coach:
+      "One piece home — six still to race. First to bear off all seven wins. You know enter, rosettes, the shared lane, capture, and exact exits.",
+    action: { kind: "next" },
+  },
+  {
+    coach: "Take a real game. Beginner is honest and patient. Good luck — and watch the flowers.",
     action: { kind: "next" },
   },
 ];
 
 const TUTORIAL_KEY = "ur:tutorial";
-const TUTORIAL_VERSION = 1;
+/** Bump when the step script changes so mid-progress saves reset cleanly. */
+const TUTORIAL_VERSION = 2;
 
 interface TutorialProgress {
   step: number;

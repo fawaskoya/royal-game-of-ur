@@ -6,10 +6,12 @@ import { useTutorial } from "@/lib/useTutorial";
 import { useSettings } from "@/lib/settings";
 import { Board } from "./Board";
 import { PlayerPanel } from "./PlayerPanel";
+import { Die, DieGradients } from "./DiceTray";
 
 /**
- * Guided first game: real engine, scripted dice. Layout mirrors GameView
- * (same grid classes), with the dice tray replaced by the coach bar.
+ * Guided first game: real engine, scripted dice.
+ * Dice stay visible in their tray slot; coach copy sits *below* them so it
+ * never covers the throw.
  */
 export function TutorialView({ onExit }: { onExit(): void }) {
   const tutorial = useTutorial();
@@ -19,6 +21,12 @@ export function TutorialView({ onExit }: { onExit(): void }) {
 
   const entryMove = tutorial.allowedMoves.find((m) => m.from === 0) ?? null;
 
+  // Pending roll, or last roll for context (same idea as DiceTray).
+  const lastRollEvent = [...state.history].reverse().find((e) => e.type === "roll");
+  const values = state.dice?.values ?? lastRollEvent?.values ?? null;
+  const total = state.dice?.total ?? lastRollEvent?.total ?? null;
+  const stale = state.dice === null;
+
   const finish = () => {
     tutorial.markDone();
     onExit();
@@ -26,11 +34,7 @@ export function TutorialView({ onExit }: { onExit(): void }) {
 
   return (
     <MotionConfig reducedMotion={settings.motion === "reduced" ? "always" : "user"}>
-      <div
-        className={[
-          "game-screen mx-auto flex w-full max-w-3xl flex-col gap-3 px-3 py-4 sm:gap-4 sm:py-6 lg:max-w-6xl",
-        ].join(" ")}
-      >
+      <div className="game-screen mx-auto flex w-full max-w-3xl flex-col gap-3 px-3 py-4 sm:gap-4 sm:py-6 lg:max-w-6xl">
         <header className="game-header flex items-center justify-between">
           <button className="btn rounded-lg px-3 py-1.5 text-sm" onClick={finish}>
             ‹ Exit
@@ -80,18 +84,64 @@ export function TutorialView({ onExit }: { onExit(): void }) {
                 player={0}
                 controller="human"
                 active={tutorial.waitingForMove || tutorial.canRoll}
-                entryMove={tutorial.waitingForMove ? entryMove : null}
-                canAct={tutorial.waitingForMove && entryMove !== null}
+                entryMove={entryMove}
+                canAct={tutorial.waitingForMove}
                 onMove={tutorial.movePiece}
               />
             </div>
 
             <div className="ga-dice">
-              <div className="dice-tray flex flex-col gap-2 rounded-xl bg-[var(--bg-raised)] px-4 py-3">
+              <div className="dice-tray flex flex-col gap-2.5 rounded-xl bg-[var(--bg-raised)] px-4 py-3">
+                {/* Dice row first — never covered by coach copy */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="dice-row flex items-center gap-2.5 px-1 sm:gap-3">
+                      <DieGradients />
+                      {(values ?? [0, 0, 0, 0]).map((value, i) => (
+                        <Die
+                          key={`${state.rollCount}-${i}`}
+                          value={value as 0 | 1}
+                          dim={stale || values === null}
+                          index={i}
+                          speed={settings.diceSpeed}
+                        />
+                      ))}
+                    </div>
+                    <div
+                      className={[
+                        "roll-total font-display w-8 text-center text-2xl",
+                        stale ? "text-[var(--ink-dim)]" : "text-[var(--gold)]",
+                      ].join(" ")}
+                      aria-label={total === null ? "no roll yet" : `rolled ${total}`}
+                    >
+                      {total ?? "–"}
+                    </div>
+                  </div>
+
+                  <div className="flex shrink-0 items-center gap-2">
+                    {tutorial.canRoll ? (
+                      <button
+                        className="btn btn-primary pulse-gold rounded-lg px-5 py-2 text-sm"
+                        onClick={tutorial.roll}
+                      >
+                        Roll
+                      </button>
+                    ) : null}
+                    {tutorial.canNext ? (
+                      <button
+                        className="btn btn-primary rounded-lg px-5 py-2 text-sm"
+                        onClick={tutorial.finished ? finish : tutorial.next}
+                      >
+                        {tutorial.finished ? "Finish" : "Next"}
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+
                 <AnimatePresence mode="wait">
                   <motion.p
                     key={tutorial.stepIndex}
-                    initial={{ opacity: 0, y: 6 }}
+                    initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
                     className="text-sm leading-relaxed text-[var(--ink)]"
@@ -100,27 +150,13 @@ export function TutorialView({ onExit }: { onExit(): void }) {
                     {tutorial.coach}
                   </motion.p>
                 </AnimatePresence>
-                <div className="flex items-center justify-end gap-2">
-                  {tutorial.canRoll ? (
-                    <button className="btn btn-primary pulse-gold rounded-lg px-5 py-2 text-sm" onClick={tutorial.roll}>
-                      Roll
-                    </button>
-                  ) : null}
-                  {tutorial.waitingForMove ? (
-                    <span className="text-xs text-[var(--gold)]">Tap the glowing piece</span>
-                  ) : null}
-                  {tutorial.guideActing ? (
-                    <span className="text-xs text-[var(--ink-dim)]">Dark is playing…</span>
-                  ) : null}
-                  {tutorial.canNext ? (
-                    <button
-                      className="btn btn-primary rounded-lg px-5 py-2 text-sm"
-                      onClick={tutorial.finished ? finish : tutorial.next}
-                    >
-                      {tutorial.finished ? "Finish" : "Next"}
-                    </button>
-                  ) : null}
-                </div>
+
+                {tutorial.waitingForMove ? (
+                  <p className="text-xs text-[var(--gold)]">Tap the glowing piece</p>
+                ) : null}
+                {tutorial.guideActing ? (
+                  <p className="text-xs text-[var(--ink-dim)]">Dark is playing…</p>
+                ) : null}
               </div>
             </div>
           </div>

@@ -66,6 +66,12 @@ export interface BoardProps {
   hintMove?: Move | null;
 }
 
+/**
+ * Pieces live in a dedicated overlay layer (not inside tiles). That way a
+ * capture never remounts the capturer into the same cell the victim just left —
+ * only the capturer's grid position updates (smooth move) and the captured
+ * piece's layoutId flies to the pool in PlayerPanel.
+ */
 export function Board({ state, legal, canAct, onMove, orientation = "horizontal", hintMove }: BoardProps) {
   const layout = useMemo(() => getLayout(state.ruleset), [state.ruleset]);
   const occ = useMemo(() => occupancy(state), [state]);
@@ -111,15 +117,46 @@ export function Board({ state, legal, canAct, onMove, orientation = "horizontal"
 
   const hintPieceKey = hintMove && hintMove.from > 0 ? layout.keyAt(hintMove.player, hintMove.from) : null;
 
+  // On-board pieces as a flat list (stable identity per player/piece index).
+  const boardPieces = useMemo(() => {
+    const list: Array<{
+      player: PlayerId;
+      piece: number;
+      row: number;
+      col: number;
+      key: string;
+    }> = [];
+    for (const player of [0, 1] as const) {
+      state.positions[player].forEach((pathIndex, piece) => {
+        if (pathIndex <= 0 || pathIndex >= layout.finishIndex) return;
+        const cell = layout.cellAt(player, pathIndex);
+        if (!cell) return;
+        list.push({
+          player,
+          piece,
+          row: cell.row,
+          col: cell.col,
+          key: `${player}-${piece}`,
+        });
+      });
+    }
+    return list;
+  }, [state.positions, layout]);
+
   // Transpose row/col for the vertical (portrait) orientation; the engine's
   // row/col stay untouched so game-semantics checks below (e.g. shared lane)
   // keep meaning "the middle lane", not "the middle of the screen".
   const place = (row: number, col: number) =>
     vertical ? { gridRow: col + 1, gridColumn: row + 1 } : { gridRow: row + 1, gridColumn: col + 1 };
 
+  const gridClass = [
+    "grid h-full w-full gap-1 sm:gap-1.5",
+    vertical ? "grid-cols-3 grid-rows-8" : "grid-cols-8 grid-rows-3",
+  ].join(" ");
+
   return (
     <div
-      className="board-frame board-frame--fit rounded-2xl p-2 sm:p-3"
+      className="board-frame board-frame--fit relative rounded-2xl p-2 sm:p-3"
       style={
         {
           "--bcols": vertical ? 3 : 8,
@@ -128,20 +165,15 @@ export function Board({ state, legal, canAct, onMove, orientation = "horizontal"
         } as React.CSSProperties
       }
     >
+      {/* Tile layer — squares only, never hosts pieces */}
       <div
-        className={[
-          "grid h-full w-full gap-1 sm:gap-1.5",
-          vertical ? "grid-cols-3 grid-rows-8" : "grid-cols-8 grid-rows-3",
-        ].join(" ")}
+        className={gridClass}
         role="grid"
         aria-label="Royal Game of Ur board"
       >
         {layout.cells.map((info) => {
           const occupant = occ.get(info.key);
-          const move = occupant ? moveForPiece.get(`${occupant.player}-${occupant.piece}`) : undefined;
-          const interactive = canAct && move !== undefined && occupant?.player === state.current;
           const target = targets.get(info.key);
-          const isHintPiece = hintPieceKey === info.key;
           const label = [
             info.rosette ? "rosette square" : "square",
             `row ${info.cell.row + 1}, column ${info.cell.col + 1}`,
@@ -166,33 +198,6 @@ export function Board({ state, legal, canAct, onMove, orientation = "horizontal"
               <div className="absolute inset-0 flex items-center justify-center">
                 {info.rosette && !occupant ? <RosetteGlyph /> : null}
               </div>
-              {occupant ? (
-                <motion.button
-                  layoutId={`piece-${occupant.player}-${occupant.piece}`}
-                  layout
-                  transition={{ type: "spring", stiffness: 420, damping: 32 }}
-                  className={[
-                    "absolute inset-0 flex items-center justify-center",
-                    isHintPiece ? "piece-hint rounded-md" : "",
-                  ].join(" ")}
-                  style={{ cursor: interactive ? "pointer" : "default" }}
-                  disabled={!interactive}
-                  onClick={() => move && onMove(move)}
-                  onMouseEnter={() => interactive && move && setHovered(move)}
-                  onMouseLeave={() => setHovered(null)}
-                  onFocus={() => interactive && move && setHovered(move)}
-                  onBlur={() => setHovered(null)}
-                  aria-label={
-                    interactive
-                      ? `Move ${occupant.player === 0 ? "Light" : "Dark"} piece from square ${move!.from} to ${
-                          move!.to === layout.finishIndex ? "home" : `square ${move!.to}`
-                        }`
-                      : label
-                  }
-                >
-                  <PieceDisc player={occupant.player} movable={interactive} />
-                </motion.button>
-              ) : null}
             </div>
           );
         })}
@@ -200,6 +205,54 @@ export function Board({ state, legal, canAct, onMove, orientation = "horizontal"
         {[0, 2].flatMap((row) =>
           [4, 5].map((col) => <div key={`notch-${row}-${col}`} aria-hidden style={place(row, col)} />),
         )}
+      </div>
+
+      {/*
+        Piece overlay — same grid metrics as the tile layer so place() aligns.
+        Pieces keep a stable React identity across cells; only their grid
+        position changes. On capture the capturer slides into the square and
+        the victim's layoutId animates to the pool (PlayerPanel), without both
+        vanishing from the contested tile.
+      */}
+      <div className={["pointer-events-none absolute inset-0 p-2 sm:p-3", gridClass].join(" ")} aria-hidden={false}>
+        {boardPieces.map(({ player, piece, row, col, key }) => {
+          const move = moveForPiece.get(`${player}-${piece}`);
+          const interactive = canAct && move !== undefined && player === state.current;
+          const cellKey = `${row},${col}`;
+          const isHintPiece = hintPieceKey === cellKey && player === (hintMove?.player ?? -1);
+
+          return (
+            <motion.button
+              key={key}
+              layoutId={`piece-${player}-${piece}`}
+              layout
+              transition={{ type: "spring", stiffness: 420, damping: 32 }}
+              className={[
+                "pointer-events-auto relative z-10 flex items-center justify-center rounded-md",
+                isHintPiece ? "piece-hint" : "",
+              ].join(" ")}
+              style={{
+                ...place(row, col),
+                cursor: interactive ? "pointer" : "default",
+              }}
+              disabled={!interactive}
+              onClick={() => move && onMove(move)}
+              onMouseEnter={() => interactive && move && setHovered(move)}
+              onMouseLeave={() => setHovered(null)}
+              onFocus={() => interactive && move && setHovered(move)}
+              onBlur={() => setHovered(null)}
+              aria-label={
+                interactive
+                  ? `Move ${player === 0 ? "Light" : "Dark"} piece from square ${move!.from} to ${
+                      move!.to === layout.finishIndex ? "home" : `square ${move!.to}`
+                    }`
+                  : `${player === 0 ? "Light" : "Dark"} piece`
+              }
+            >
+              <PieceDisc player={player} movable={interactive} />
+            </motion.button>
+          );
+        })}
       </div>
     </div>
   );

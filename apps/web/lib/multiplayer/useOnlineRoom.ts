@@ -38,6 +38,8 @@ export type UseOnlineRoomResult = UseLocalRoomResult & {
   rematchOffered: boolean;
   /** Create or follow the rematch for the finished game. */
   rematch(): void;
+  /** Open a matchmade game by id (no invite code). */
+  joinGameId(gameId: string, label?: string): void;
 };
 
 export function useOnlineRoom(): UseOnlineRoomResult {
@@ -179,6 +181,23 @@ export function useOnlineRoom(): UseOnlineRoomResult {
     [attach],
   );
 
+  /** Join a matchmade game by id (no room code). */
+  const joinGameId = useCallback(
+    (gameId: string, label = "MATCH") => {
+      setError(null);
+      setPhase("waiting");
+      void (async () => {
+        try {
+          await attach(gameId, label);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "could not open the match");
+          setPhase("error");
+        }
+      })();
+    },
+    [attach],
+  );
+
   const leave = useCallback(() => {
     transportRef.current?.disconnect();
     transportRef.current = null;
@@ -281,6 +300,7 @@ export function useOnlineRoom(): UseOnlineRoomResult {
     rematch,
     host,
     join,
+    joinGameId,
     leave,
     roll,
     movePiece,

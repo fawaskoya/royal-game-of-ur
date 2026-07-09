@@ -132,6 +132,12 @@ Deno.serve(async (req: Request) => {
         );
       case "rematch":
         return jsonResponse(await rematch(admin, uid, String(body.gameId ?? "")));
+      case "enqueue_match":
+        return jsonResponse(await enqueueMatch(admin, uid, String(body.pool ?? "casual")));
+      case "cancel_match":
+        return jsonResponse(await cancelMatch(admin, uid));
+      case "poll_match":
+        return jsonResponse(await pollMatch(admin, uid));
       default:
         return errorResponse(`unknown action "${String(action)}"`);
     }
@@ -197,6 +203,7 @@ async function createRoom(admin: AdminClient, uid: string): Promise<{ gameId: st
         light: uid,
         status: "waiting",
         seed_commitment: seedCommitment,
+        // match_pool left null (private invite); column added in 0005_matchmaking
       })
       .select("id")
       .single();
@@ -212,6 +219,204 @@ async function createRoom(admin: AdminClient, uid: string): Promise<{ gameId: st
   if (secretError) throw new Error(secretError.message);
 
   return { gameId, roomCode };
+}
+
+/** Rating for matchmaking; creates the casual row at INITIAL if needed. */
+async function ratingFor(admin: AdminClient, uid: string, pool: string): Promise<number> {
+  const { data } = await admin
+    .from("ratings")
+    .select("rating")
+    .eq("profile_id", uid)
+    .eq("pool", pool)
+    .maybeSingle();
+  if (data?.rating != null) return data.rating as number;
+  return INITIAL_RATING;
+}
+
+/**
+ * Global matchmaking: enqueue the player, then try to pair with the oldest
+ * suitable waiting opponent in the same pool. Rating window expands with wait
+ * time so someone is always findable.
+ */
+async function enqueueMatch(
+  admin: AdminClient,
+  uid: string,
+  pool: string,
+): Promise<{ status: "searching" | "matched"; gameId?: string; rating: number; waitingSeconds: number }> {
+  const cleanPool = pool === "ranked" ? "casual" : (pool || "casual"); // single pool for v1
+  await ensureProfile(admin, uid);
+  const rating = await ratingFor(admin, uid, cleanPool);
+
+  // Already matched while tab was asleep?
+  const { data: existing } = await admin
+    .from("matchmaking_queue")
+    .select("matched_game_id, enqueued_at")
+    .eq("profile_id", uid)
+    .maybeSingle();
+  if (existing?.matched_game_id) {
+    return {
+      status: "matched",
+      gameId: existing.matched_game_id as string,
+      rating,
+      waitingSeconds: 0,
+    };
+  }
+
+  const enqueuedAt = existing?.enqueued_at ?? new Date().toISOString();
+  const { error: upError } = await admin.from("matchmaking_queue").upsert(
+    {
+      profile_id: uid,
+      pool: cleanPool,
+      rating,
+      enqueued_at: enqueuedAt,
+      matched_game_id: null,
+    },
+    { onConflict: "profile_id" },
+  );
+  if (upError) throw new Error(upError.message);
+
+  const matched = await tryPairMatch(admin, uid, cleanPool, rating);
+  if (matched) {
+    return { status: "matched", gameId: matched, rating, waitingSeconds: 0 };
+  }
+
+  const waitingSeconds = Math.max(0, Math.floor((Date.now() - new Date(enqueuedAt).getTime()) / 1000));
+  return { status: "searching", rating, waitingSeconds };
+}
+
+async function cancelMatch(admin: AdminClient, uid: string): Promise<{ ok: true }> {
+  // Drop the queue row entirely (searching or already matched — client joined).
+  await admin.from("matchmaking_queue").delete().eq("profile_id", uid);
+  return { ok: true };
+}
+
+async function pollMatch(
+  admin: AdminClient,
+  uid: string,
+): Promise<{ status: "idle" | "searching" | "matched"; gameId?: string; waitingSeconds: number; rating?: number }> {
+  const { data: row } = await admin
+    .from("matchmaking_queue")
+    .select("matched_game_id, enqueued_at, pool, rating")
+    .eq("profile_id", uid)
+    .maybeSingle();
+  if (!row) return { status: "idle", waitingSeconds: 0 };
+  if (row.matched_game_id) {
+    return {
+      status: "matched",
+      gameId: row.matched_game_id as string,
+      waitingSeconds: 0,
+      rating: row.rating as number,
+    };
+  }
+  const pool = (row.pool as string) || "casual";
+  const rating = row.rating as number;
+  const matched = await tryPairMatch(admin, uid, pool, rating);
+  if (matched) {
+    return { status: "matched", gameId: matched, waitingSeconds: 0, rating };
+  }
+  const waitingSeconds = Math.max(0, Math.floor((Date.now() - new Date(row.enqueued_at as string).getTime()) / 1000));
+  return { status: "searching", waitingSeconds, rating };
+}
+
+/**
+ * Pair this player with the best waiting opponent.
+ * Window: ±(200 + 25 * minutes waiting), floored at 200, uncapped after 5 min.
+ */
+async function tryPairMatch(
+  admin: AdminClient,
+  uid: string,
+  pool: string,
+  myRating: number,
+): Promise<string | null> {
+  const { data: me } = await admin
+    .from("matchmaking_queue")
+    .select("enqueued_at, matched_game_id")
+    .eq("profile_id", uid)
+    .maybeSingle();
+  if (!me || me.matched_game_id) return (me?.matched_game_id as string) ?? null;
+
+  const waitMin = Math.max(0, (Date.now() - new Date(me.enqueued_at as string).getTime()) / 60000);
+  const window = waitMin >= 5 ? 99999 : Math.floor(200 + 25 * waitMin);
+
+  const { data: candidates, error } = await admin
+    .from("matchmaking_queue")
+    .select("profile_id, rating, enqueued_at")
+    .eq("pool", pool)
+    .is("matched_game_id", null)
+    .neq("profile_id", uid)
+    .order("enqueued_at", { ascending: true })
+    .limit(40);
+  if (error) throw new Error(error.message);
+  if (!candidates?.length) return null;
+
+  // Prefer closest rating within window; fall back to oldest in window.
+  type Cand = { profile_id: string; rating: number; enqueued_at: string };
+  const inWindow = (candidates as Cand[]).filter((c) => Math.abs(c.rating - myRating) <= window);
+  if (inWindow.length === 0) return null;
+  inWindow.sort((a, b) => Math.abs(a.rating - myRating) - Math.abs(b.rating - myRating));
+  const opp = inWindow[0]!;
+
+  // Create the game first, then claim both queue rows atomically.
+  const seed = randomSeed();
+  const seedCommitment = await commitmentFor(seed);
+  // Higher rating opens as Light (first); ties → lexicographic uid.
+  const light = myRating > opp.rating || (myRating === opp.rating && uid < opp.profile_id) ? uid : opp.profile_id;
+  const dark = light === uid ? opp.profile_id : uid;
+
+  const { data: created, error: createError } = await admin
+    .from("games")
+    .insert({
+      room_code: null,
+      ruleset: FINKEL_RULESET,
+      light,
+      dark,
+      status: "playing",
+      seed_commitment: seedCommitment,
+      started_at: new Date().toISOString(),
+      match_pool: pool,
+    })
+    .select("id")
+    .single();
+  if (createError || !created) throw new Error(createError?.message ?? "could not create match");
+  const gameId = created.id as string;
+
+  const { error: secretError } = await admin.from("game_secrets").insert({ game_id: gameId, seed });
+  if (secretError) {
+    await admin.from("games").delete().eq("id", gameId);
+    throw new Error(secretError.message);
+  }
+
+  // Claim both seats on the queue; if either already matched, roll back the game.
+  const { data: claimedMe } = await admin
+    .from("matchmaking_queue")
+    .update({ matched_game_id: gameId })
+    .eq("profile_id", uid)
+    .is("matched_game_id", null)
+    .select("profile_id");
+  const { data: claimedOpp } = await admin
+    .from("matchmaking_queue")
+    .update({ matched_game_id: gameId })
+    .eq("profile_id", opp.profile_id)
+    .is("matched_game_id", null)
+    .select("profile_id");
+
+  if (!claimedMe?.length || !claimedOpp?.length) {
+    // Race lost — clean up orphan game and let the next poll retry.
+    await admin.from("games").delete().eq("id", gameId);
+    if (claimedMe?.length) {
+      await admin.from("matchmaking_queue").update({ matched_game_id: null }).eq("profile_id", uid);
+    }
+    if (claimedOpp?.length) {
+      await admin.from("matchmaking_queue").update({ matched_game_id: null }).eq("profile_id", opp.profile_id);
+    }
+    return null;
+  }
+
+  // Clear queue rows after a successful match (optional; keep for a moment so
+  // the other client's poll can still read matched_game_id, then they leave).
+  // Keep rows until client cancels/leaves — poll returns gameId while present.
+
+  return gameId;
 }
 
 async function joinRoom(admin: AdminClient, uid: string, roomCode: string): Promise<{ gameId: string }> {
