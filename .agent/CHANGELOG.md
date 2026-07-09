@@ -1,6 +1,35 @@
 # Changelog
 
-## [Unreleased] — 2026-07-09 online-in-the-UI + grand redesign
+## [Unreleased] — 2026-07-09/10 real leaderboard + identity + rematch
+
+### Added
+- **Server-side Elo** (`supabase/functions/_shared/rating.ts`, same constants as the
+  client's local module): applied when a game actually transitions playing → finished — the
+  status-guarded UPDATE means retries/races can never double-count. Verified by a scripted
+  328-event game to completion: exact 816/784 first-game ratings, gamesPlayed 1 apiece,
+  post-game actions rejected.
+- **Leaderboard** (menu → Leaderboard): top-20 casual pool via RLS-gated reads
+  (ratings ⋈ profiles), own row highlighted; live in the panel with real rated players.
+- **Player identity**: deterministic handles minted server-side on first contact
+  ("Swift Heron 53"); "Playing as X · change name" in the online lobby (RLS own-profile
+  update, 2–24 char DB constraint); room header shows "A vs B"; identity fetch doubles as a
+  function warm-up against cold starts.
+- **Rematch** (`rematch` action, migration `0004`): finished game points at its successor —
+  seats swapped, idempotent (simultaneous clicks converge on ONE game — verified), and the
+  games-row UPDATE doubles as the Realtime "opponent wants a rematch" signal. Win overlay:
+  Rematch / Join rematch.
+- **Online games join local records** (AG-14): once per game, a MatchResult + verifiable
+  archive replay (`mode: online` with opponent handle); Stats' vs-AI numbers untouched;
+  win overlay shows the fresh online rating with its delta.
+
+### Fixed
+- **Engine: replay verifier vs jsonb key order.** `buildStateFromEvents` compared capture
+  objects via `JSON.stringify`, but Postgres jsonb canonicalizes key order — the first
+  online game containing a capture failed server-side verification against its own stored
+  log. Comparator is now field-by-field; regression test simulates jsonb reordering over a
+  full game. (Local play never hit this — JS JSON preserves insertion order.)
+
+## [2026-07-09] online-in-the-UI + grand redesign
 
 ### Added
 - **Internet rooms are now playable from the app** (`useOnlineRoom`, `OnlineRoomView`

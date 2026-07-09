@@ -12,6 +12,7 @@ import { HowToPlay } from "./HowToPlay";
 import { TutorialView } from "./TutorialView";
 import { SettingsPanel } from "./SettingsPanel";
 import { StatsPanel } from "./StatsPanel";
+import { LeaderboardPanel } from "./LeaderboardPanel";
 import { ReplayViewer } from "./ReplayViewer";
 import { ArchivePanel } from "./ArchivePanel";
 import { OnlineRoomView } from "./OnlineRoomView";
@@ -34,6 +35,8 @@ function modeLabel(mode: GameMode): string {
       return `You (${mode.human === 0 ? "Light" : "Dark"}) vs ${difficultyLabel(mode.difficulty)}`;
     case "watch":
       return `Watching ${difficultyLabel(mode.light)} vs ${difficultyLabel(mode.dark)}`;
+    case "online":
+      return `Online vs ${mode.opponent ?? "guest"}`;
   }
 }
 
@@ -137,6 +140,7 @@ export function GameApp() {
   const [resume, setResume] = useState<SavedGame | undefined>(undefined);
   const [confirmBegin, setConfirmBegin] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
+  const [boardOpen, setBoardOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [tutorialActive, setTutorialActive] = useState(false);
@@ -359,6 +363,11 @@ export function GameApp() {
           <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => setStatsOpen(true)}>
             Stats
           </button>
+          {isOnlineConfigured() ? (
+            <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => setBoardOpen(true)}>
+              Leaderboard
+            </button>
+          ) : null}
           <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => setSettingsOpen(true)}>
             Settings
           </button>
@@ -384,6 +393,7 @@ export function GameApp() {
       </section>
 
       <StatsPanel open={statsOpen} onClose={() => setStatsOpen(false)} />
+      <LeaderboardPanel open={boardOpen} onClose={() => setBoardOpen(false)} />
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <ArchivePanel open={archiveOpen} onClose={() => setArchiveOpen(false)} />
       <HowToPlay

@@ -40,6 +40,12 @@ captures · AI-challenge score (per-tier bests) · puzzle score (later).
 volume justifies it (deviation/volatility handle sparse play better). Seasons reset
 leaderboards, not ratings.
 
+**Shipped 2026-07-10 — the real server-side ladder (v1)**: `ratings` written exactly once
+per finished online game by the Edge Function (status-guarded transition), same constants as
+the local module (K=32 provisional <20 games → 16, initial 800); public read via RLS; top-20
+Leaderboard panel in the menu; deterministic handles with owner-only rename. Pools, seasons,
+and matchmaking remain per the plan below.
+
 **Shipped 2026-07-06 — the Elo math + a local “training rating”**: `lib/rating/elo.ts` (pure,
 tested — the same update rule the server will run) and `lib/rating/training.ts`, which folds
 the stored vs-AI results into a rating against fixed per-tier anchors (beginner 600 → master

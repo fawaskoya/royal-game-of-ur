@@ -18,13 +18,23 @@ import { DiceTray } from "./DiceTray";
 export function RoomGameScreen({
   room,
   title,
+  subtitle,
   notice,
+  winNote,
+  rematchLabel,
+  onRematch,
   onLeave,
 }: {
   room: UseLocalRoomResult;
   title: string;
+  /** Small line under the title — e.g. "Bright Kite 58 vs Patient River 68". */
+  subtitle?: string | null;
   /** Inline transport error (e.g. "not your turn"), shown under the tray. */
   notice?: string | null;
+  /** Extra line on the win overlay — e.g. the fresh online rating. */
+  winNote?: string | null;
+  rematchLabel?: string;
+  onRematch?: () => void;
   onLeave(): void;
 }) {
   const { layout } = useGameLayout();
@@ -45,7 +55,10 @@ export function RoomGameScreen({
           <button className="btn rounded-lg px-3 py-1.5 text-sm" onClick={onLeave}>
             ‹ Leave
           </button>
-          <h1 className="font-display text-lg tracking-wide text-[var(--gold)] sm:text-xl">{title}</h1>
+          <div className="text-center">
+            <h1 className="font-display text-lg tracking-wide text-[var(--gold)] sm:text-xl">{title}</h1>
+            {subtitle ? <div className="text-[11px] text-[var(--ink-dim)]">{subtitle}</div> : null}
+          </div>
           <span className="chip">You are {room.mySeat === 0 ? "☀ Light" : "☾ Dark"}</span>
         </header>
 
@@ -121,14 +134,21 @@ export function RoomGameScreen({
                 animate={{ scale: 1, y: 0 }}
                 className="board-frame w-full max-w-sm rounded-2xl p-8 text-center"
               >
-                <div className="font-display text-3xl text-[var(--gold)]">
+                <div className="font-display gold-text text-3xl">
                   {state.winner === 0 ? "Light" : "Dark"} wins
                 </div>
-                <div className="mt-2 text-sm text-[var(--ink-dim)]">
-                  {state.winner === room.mySeat ? "Victory is yours." : "A rematch is only a room away."}
+                <div className="ornament-rule mx-auto mt-3 max-w-[220px] text-[10px]">✦</div>
+                <div className="mt-3 text-sm text-[var(--ink-dim)]">
+                  {state.winner === room.mySeat ? "Victory is yours." : "A rematch is only a click away."}
                 </div>
+                {winNote ? <div className="mt-2 text-sm text-[var(--gold)]">{winNote}</div> : null}
                 <div className="mt-6 flex justify-center gap-3">
-                  <button className="btn btn-primary rounded-lg px-5 py-2 text-sm" onClick={onLeave}>
+                  {onRematch ? (
+                    <button className="btn btn-primary rounded-lg px-5 py-2 text-sm" onClick={onRematch}>
+                      {rematchLabel ?? "Rematch"}
+                    </button>
+                  ) : null}
+                  <button className="btn rounded-lg px-5 py-2 text-sm" onClick={onLeave}>
                     Back to menu
                   </button>
                 </div>

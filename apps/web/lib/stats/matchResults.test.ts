@@ -83,3 +83,25 @@ describe("results storage", () => {
     expect(loadResults(storage)).toEqual([]);
   });
 });
+
+describe("online results", () => {
+  it("records an online result, keeps it out of vs-AI stats, and round-trips", () => {
+    const storage = memoryStorage();
+    const result: MatchResult = {
+      gameId: "srv-1",
+      completedAt: new Date().toISOString(),
+      mode: { kind: "online", mySeat: 1, opponent: "Bright Kite 58" },
+      winner: 1,
+      turns: 88,
+      durationMs: 120_000,
+      captures: [3, 4],
+      rosettes: [5, 6],
+    };
+    expect(recordResult(result, storage)).toBe(true);
+    const loaded = loadResults(storage);
+    expect(loaded).toHaveLength(1);
+    expect(loaded[0]!.mode).toEqual(result.mode);
+    // summarize counts only ai-mode games — the online result must not leak in.
+    expect(summarizeStats(loaded).games).toBe(0);
+  });
+});

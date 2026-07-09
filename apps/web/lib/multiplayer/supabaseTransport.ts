@@ -29,6 +29,11 @@ interface GameRow {
   light: string | null;
   dark: string | null;
   status: "waiting" | "playing" | "finished" | "abandoned";
+  rematch_game_id?: string | null;
+}
+
+export async function invokeGameAction<T>(action: string, payload: Record<string, unknown>, token: string): Promise<T> {
+  return invoke<T>(action, payload, token);
 }
 
 async function invoke<T>(action: string, payload: Record<string, unknown>, token: string): Promise<T> {
@@ -72,6 +77,7 @@ export class SupabaseRoomTransport implements MultiplayerTransport {
   #eventCbs = new Set<(batch: ServerEventBatch) => void>();
   #playerCbs = new Set<(players: readonly RoomPlayer[]) => void>();
   #statusCbs = new Set<(status: TransportStatus) => void>();
+  #rematchCbs = new Set<(nextGameId: string) => void>();
   #channel: ReturnType<NonNullable<ReturnType<typeof getSupabaseClient>>["channel"]> | null = null;
 
   /** Set once `connect()` resolves — the room hook reads these, mirroring
@@ -130,7 +136,11 @@ export class SupabaseRoomTransport implements MultiplayerTransport {
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "games", filter: `id=eq.${gameId}` },
         (payload) => {
-          this.#emitPlayers(payload.new as GameRow);
+          const row = payload.new as GameRow;
+          this.#emitPlayers(row);
+          // A rematch pointer appearing on the finished game IS the offer
+          // notification — no separate channel needed.
+          if (row.rematch_game_id) for (const cb of this.#rematchCbs) cb(row.rematch_game_id);
         },
       )
       .subscribe();
@@ -199,6 +209,18 @@ export class SupabaseRoomTransport implements MultiplayerTransport {
     this.#statusCbs.add(cb);
     return () => this.#statusCbs.delete(cb);
   }
+
+  /** Fires when the current game gains a rematch successor (either side asked). */
+  onRematch(cb: (nextGameId: string) => void): () => void {
+    this.#rematchCbs.add(cb);
+    return () => this.#rematchCbs.delete(cb);
+  }
+}
+
+/** Ask the server for (or find) the rematch successor of a finished game. */
+export async function requestRematch(gameId: string): Promise<{ gameId: string }> {
+  const token = await ensureSession();
+  return invoke("rematch", { gameId }, token);
 }
 
 /** Create a room; returns its game id + shareable 4-letter code. */

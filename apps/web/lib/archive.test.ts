@@ -120,3 +120,19 @@ describe("elo", () => {
     expect(rating.lastDelta).not.toBeNull();
   });
 });
+
+describe("online games in local records", () => {
+  it("archives an online game and its label data round-trips", () => {
+    const storage = memoryStorage();
+    const session = finishedGame(31);
+    const mode = { kind: "online", mySeat: 0, opponent: "Patient River 68" } as const;
+    expect(archiveGame(session.state, mode, "online-game-1", storage)).toBe(true);
+    const [entry] = loadArchive(storage);
+    expect(entry!.mode).toEqual(mode);
+    // The stored replay still re-verifies through the engine.
+    const replay = replayOf(entry!);
+    expect(replay).not.toBeNull();
+    const rebuilt = replayStateAt(replay!);
+    expect(rebuilt.winner).toBe(session.state.winner);
+  });
+});

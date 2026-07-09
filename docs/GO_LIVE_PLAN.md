@@ -68,12 +68,19 @@ anonymous auth; verified in the real browser UI against a separate-account guest
 supabase-js's full header set), `supabase_realtime` publication membership (migration
 `0003`), one-retry cold-start handling.
 
+**2026-07-10 — leaderboard milestone shipped.** Server-side Elo on finished games
+(status-guarded, exactly-once), public leaderboard panel, deterministic player handles with
+in-lobby rename, seats-swapped idempotent rematch, and online games recorded into local
+Stats/Replays. Verified by a scripted 328-event game to completion (exact 816/784 ratings)
+plus in-browser checks (live ladder, rename, "Fawas of Ur vs Golden Star 76" room header).
+Also fixed en route: the engine's replay verifier was key-order-sensitive and rejected
+jsonb-round-tripped logs at the first capture (regression-tested).
+
 Remaining:
-1. Record online results into local stats/archive + a rematch flow (AG-14).
-2. Server `MatchResult`s → Elo ranked pool → real leaderboards (the local Elo module is the
-   same math; `docs/LEADERBOARDS_AND_STATS.md`).
-3. Accounts beyond guest (Google/Apple) when leaderboards demand identity.
-4. Beta with invite codes → open.
+1. Accounts beyond guest (Google/Apple) when the ladder demands durable identity; handle
+   moderation (AG-16).
+2. Ranked vs casual pools, seasons, matchmaking (docs/LEADERBOARDS_AND_STATS.md).
+3. Beta with invite codes → open.
 
 ## Phase L3 — App stores (v1.2)
 

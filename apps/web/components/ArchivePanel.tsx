@@ -14,7 +14,9 @@ function entryLabel(entry: ArchiveEntry): string {
       ? "Two players"
       : mode.kind === "ai"
         ? `vs ${mode.difficulty}`
-        : `${mode.light} vs ${mode.dark}`;
+        : mode.kind === "online"
+          ? `vs ${mode.opponent ?? "guest"} · online`
+          : `${mode.light} vs ${mode.dark}`;
   return `${entry.winner === 0 ? "☀ Light" : "☾ Dark"} won · ${who} · ${entry.turns} turns`;
 }
 

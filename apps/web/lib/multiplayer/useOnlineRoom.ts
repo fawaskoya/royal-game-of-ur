@@ -23,11 +23,21 @@ import {
 } from "@ur/engine";
 import type { RoomPlayer } from "@/lib/network/types";
 import type { UseLocalRoomResult } from "./useLocalRoom";
-import { SupabaseRoomTransport, createOnlineRoom, joinOnlineRoom } from "./supabaseTransport";
+import { SupabaseRoomTransport, createOnlineRoom, joinOnlineRoom, requestRematch } from "./supabaseTransport";
+import { getSupabaseClient } from "./supabaseClient";
+import type { GameMode } from "@/lib/useGame";
+import { recordResult, resultFromGame } from "@/lib/stats/matchResults";
+import { archiveGame } from "@/lib/archive";
 
 export type UseOnlineRoomResult = UseLocalRoomResult & {
   /** Last transport-level failure worth showing inline (e.g. "not your turn"). */
   actionError: string | null;
+  /** Handles by seat, once known: [light, dark]. */
+  handles: readonly [string | null, string | null];
+  /** True once the finished game has a successor waiting (either side asked). */
+  rematchOffered: boolean;
+  /** Create or follow the rematch for the finished game. */
+  rematch(): void;
 };
 
 export function useOnlineRoom(): UseOnlineRoomResult {
@@ -38,6 +48,8 @@ export function useOnlineRoom(): UseOnlineRoomResult {
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<{ state: GameState; tail: readonly GameEvent[] } | null>(null);
+  const [handles, setHandles] = useState<readonly [string | null, string | null]>([null, null]);
+  const [rematchOffered, setRematchOffered] = useState(false);
 
   const transportRef = useRef<SupabaseRoomTransport | null>(null);
   const gameIdRef = useRef<string | null>(null);
@@ -45,6 +57,8 @@ export function useOnlineRoom(): UseOnlineRoomResult {
   const pendingRef = useRef<Map<number, GameEvent>>(new Map());
   const rulesetRef = useRef<RulesetConfig | null>(null);
   const busyRef = useRef(false);
+  const startedAtRef = useRef<string>(new Date().toISOString());
+  const recordedRef = useRef<string | null>(null);
 
   const rebuild = useCallback((tail: readonly GameEvent[]) => {
     const ruleset = rulesetRef.current;
@@ -81,23 +95,52 @@ export function useOnlineRoom(): UseOnlineRoomResult {
     [rebuild],
   );
 
+  /** Fetch both seats' display names once the roster has real ids. */
+  const resolveHandles = useCallback((roster: readonly RoomPlayer[]) => {
+    const supabase = getSupabaseClient();
+    const ids = roster.map((p) => p.id);
+    if (!supabase || ids.length === 0) return;
+    void supabase
+      .from("profiles")
+      .select("id, handle")
+      .in("id", ids)
+      .then(({ data }) => {
+        if (!data) return;
+        const bySeat: [string | null, string | null] = [null, null];
+        for (const player of roster) {
+          const row = data.find((r) => r.id === player.id);
+          if (player.seat !== null && row?.handle) bySeat[player.seat] = row.handle as string;
+        }
+        setHandles(bySeat);
+      });
+  }, []);
+
   const attach = useCallback(
     async (gameId: string, roomCode: string) => {
+      transportRef.current?.disconnect();
+      logRef.current = [];
+      pendingRef.current.clear();
+      setSnapshot(null);
+      setRematchOffered(false);
+      startedAtRef.current = new Date().toISOString();
+
       const transport = new SupabaseRoomTransport();
       transportRef.current = transport;
       gameIdRef.current = gameId;
       transport.onEvents((batch) => ingest(batch.fromIndex, batch.events));
       transport.onPlayersChanged((roster) => {
         setPlayers(roster);
+        resolveHandles(roster);
         setPhase((current) => (current === "error" ? current : roster.length >= 2 ? "playing" : "waiting"));
       });
+      transport.onRematch(() => setRematchOffered(true));
       await transport.connect(gameId, "");
       rulesetRef.current = transport.ruleset;
       setMySeat(transport.mySeat);
       setCode(roomCode);
       rebuild([]);
     },
-    [ingest, rebuild],
+    [ingest, rebuild, resolveHandles],
   );
 
   const host = useCallback(() => {
@@ -150,6 +193,8 @@ export function useOnlineRoom(): UseOnlineRoomResult {
     setPlayers([]);
     setError(null);
     setActionError(null);
+    setHandles([null, null]);
+    setRematchOffered(false);
   }, []);
 
   useEffect(() => () => transportRef.current?.disconnect(), []);
@@ -177,6 +222,30 @@ export function useOnlineRoom(): UseOnlineRoomResult {
     const gameId = gameIdRef.current;
     act(() => transportRef.current!.requestRoll(gameId, logRef.current.length));
   }, [myTurn, gamePhase, act]);
+
+  // A finished online game joins the local record exactly once: a
+  // MatchResult for Stats and a verifiable replay in the archive — the same
+  // treatment local games get (AG-14).
+  useEffect(() => {
+    const finished = snapshot?.state;
+    const gameId = gameIdRef.current;
+    if (!finished || finished.winner === null || !gameId || mySeat === null) return;
+    if (recordedRef.current === gameId) return;
+    recordedRef.current = gameId;
+    const mode: GameMode = { kind: "online", mySeat, opponent: handles[mySeat === 0 ? 1 : 0] };
+    const result = resultFromGame(finished, mode, gameId, startedAtRef.current);
+    if (result) recordResult(result);
+    archiveGame(finished, mode, gameId);
+  }, [snapshot, mySeat, handles]);
+
+  const rematch = useCallback(() => {
+    const gameId = gameIdRef.current;
+    if (!gameId) return;
+    act(async () => {
+      const { gameId: nextId } = await requestRematch(gameId);
+      await attach(nextId, code ?? "");
+    });
+  }, [act, attach, code]);
 
   const movePiece = useCallback(
     (move: Move) => {
@@ -207,6 +276,9 @@ export function useOnlineRoom(): UseOnlineRoomResult {
     canMove: myTurn && gamePhase === "awaiting-move" && phase === "playing",
     error,
     actionError,
+    handles,
+    rematchOffered,
+    rematch,
     host,
     join,
     leave,

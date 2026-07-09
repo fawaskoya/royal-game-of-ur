@@ -1,9 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocalRoom } from "@/lib/multiplayer/useLocalRoom";
 import { useOnlineRoom } from "@/lib/multiplayer/useOnlineRoom";
 import { isOnlineConfigured } from "@/lib/multiplayer/supabaseClient";
+import {
+  fetchIdentity,
+  saveHandle,
+  HANDLE_MAX,
+  type OnlineIdentity,
+} from "@/lib/multiplayer/onlineIdentity";
 import { RoomGameScreen } from "./RoomGameScreen";
 
 /**
@@ -36,6 +42,8 @@ function Lobby({
   switchLabel,
   onSwitchWire,
   onExit,
+  identity,
+  onIdentityChange,
 }: {
   heading: string;
   blurb: React.ReactNode;
@@ -48,6 +56,8 @@ function Lobby({
   switchLabel?: string;
   onSwitchWire?: () => void;
   onExit(): void;
+  identity?: OnlineIdentity | null;
+  onIdentityChange?: (next: OnlineIdentity) => void;
 }) {
   const leaveAndExit = () => {
     room.leave();
@@ -91,6 +101,9 @@ function Lobby({
               </button>
             </div>
           </div>
+          {identity && onIdentityChange ? (
+            <IdentityLine identity={identity} onIdentityChange={onIdentityChange} />
+          ) : null}
           {onSwitchWire ? (
             <button className="text-xs text-[var(--ink-dim)] underline-offset-4 hover:underline" onClick={onSwitchWire}>
               {switchLabel}
@@ -143,13 +156,68 @@ function Lobby({
 function OnlineFlow({ onExit, onSwitchWire }: { onExit(): void; onSwitchWire(): void }) {
   const room = useOnlineRoom();
   const [joinCode, setJoinCode] = useState("");
+  const [identity, setIdentity] = useState<OnlineIdentity | null>(null);
+  const [winNote, setWinNote] = useState<string | null>(null);
+  const preRatingRef = useRef<number | null>(null);
+
+  // Fetching identity on mount doubles as a function warm-up, so the first
+  // create/join doesn't eat the cold start.
+  useEffect(() => {
+    let cancelled = false;
+    fetchIdentity()
+      .then((me) => {
+        if (cancelled) return;
+        setIdentity(me);
+        preRatingRef.current = me.rating;
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // When a game ends, refresh the rating and show the swing on the overlay.
+  const winner = room.state?.winner ?? null;
+  useEffect(() => {
+    if (winner === null) {
+      setWinNote(null);
+      return;
+    }
+    let cancelled = false;
+    fetchIdentity()
+      .then((me) => {
+        if (cancelled) return;
+        setIdentity(me);
+        const before = preRatingRef.current;
+        preRatingRef.current = me.rating;
+        if (me.rating === null) return;
+        const delta = before === null ? null : me.rating - before;
+        setWinNote(
+          delta === null
+            ? `Online rating: ${me.rating}`
+            : `Online rating: ${me.rating} (${delta >= 0 ? "+" : ""}${delta})`,
+        );
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [winner]);
 
   if (room.phase === "playing" && room.state) {
+    const subtitle =
+      room.handles[0] || room.handles[1]
+        ? `${room.handles[0] ?? "Light"} vs ${room.handles[1] ?? "Dark"}`
+        : null;
     return (
       <RoomGameScreen
         room={room}
         title={`Room ${room.code ?? ""}`}
+        subtitle={subtitle}
         notice={room.actionError}
+        winNote={winNote}
+        rematchLabel={room.rematchOffered ? "Join rematch" : "Rematch"}
+        onRematch={room.rematch}
         onLeave={() => {
           room.leave();
           onExit();
@@ -176,7 +244,79 @@ function OnlineFlow({ onExit, onSwitchWire }: { onExit(): void; onSwitchWire(): 
       switchLabel="Prefer two windows on this device? Use a same-device room"
       onSwitchWire={onSwitchWire}
       onExit={onExit}
+      identity={identity}
+      onIdentityChange={setIdentity}
     />
+  );
+}
+
+/** "Playing as <handle>" with an inline rename — shown in the online lobby. */
+function IdentityLine({
+  identity,
+  onIdentityChange,
+}: {
+  identity: OnlineIdentity | null;
+  onIdentityChange(next: OnlineIdentity): void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!identity) return null;
+
+  if (!editing) {
+    return (
+      <div className="text-center text-xs text-[var(--ink-dim)]">
+        Playing as <span className="text-[var(--gold)]">{identity.handle}</span>
+        {identity.rating !== null ? <> · rating {identity.rating}</> : null}{" "}
+        <button
+          className="underline decoration-dotted underline-offset-4 hover:text-[var(--ink)]"
+          onClick={() => {
+            setDraft(identity.handle);
+            setError(null);
+            setEditing(true);
+          }}
+        >
+          change name
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <div className="flex justify-center gap-2">
+        <input
+          value={draft}
+          maxLength={HANDLE_MAX}
+          onChange={(e) => setDraft(e.target.value)}
+          className="btn w-44 rounded-lg px-3 py-1.5 text-center text-sm"
+          autoFocus
+        />
+        <button
+          className="btn btn-primary rounded-lg px-3 py-1.5 text-xs"
+          disabled={saving}
+          onClick={() => {
+            setSaving(true);
+            setError(null);
+            saveHandle(draft)
+              .then((cleaned) => {
+                onIdentityChange({ ...identity, handle: cleaned });
+                setEditing(false);
+              })
+              .catch((err) => setError(err instanceof Error ? err.message : "could not save"))
+              .finally(() => setSaving(false));
+          }}
+        >
+          Save
+        </button>
+        <button className="btn rounded-lg px-3 py-1.5 text-xs" onClick={() => setEditing(false)}>
+          Cancel
+        </button>
+      </div>
+      {error ? <div className="text-xs text-[var(--danger)]">{error}</div> : null}
+    </div>
   );
 }
 

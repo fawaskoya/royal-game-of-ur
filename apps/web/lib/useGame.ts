@@ -27,7 +27,10 @@ import { recordResult, resultFromGame } from "@/lib/stats/matchResults";
 export type GameMode =
   | { kind: "pvp" }
   | { kind: "ai"; human: PlayerId; difficulty: DifficultyId }
-  | { kind: "watch"; light: DifficultyId; dark: DifficultyId };
+  | { kind: "watch"; light: DifficultyId; dark: DifficultyId }
+  // Online games never run through useGame (the server drives them); the
+  // kind exists so results/archive entries can carry who was played.
+  | { kind: "online"; mySeat: PlayerId; opponent: string | null };
 
 export type Controller = "human" | DifficultyId;
 
@@ -39,6 +42,8 @@ export function controllerOf(mode: GameMode, player: PlayerId): Controller {
       return player === mode.human ? "human" : mode.difficulty;
     case "watch":
       return player === 0 ? mode.light : mode.dark;
+    case "online":
+      return "human";
   }
 }
 
