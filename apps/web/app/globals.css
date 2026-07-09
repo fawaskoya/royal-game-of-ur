@@ -13,7 +13,9 @@
   --tile-lane: #eadfc6;
   --tile-edge: #b3a37e;
   --gold: #c9a24b;
+  --gold-bright: #ecd08a;
   --gold-soft: rgba(201, 162, 75, 0.55);
+  --gold-faint: rgba(201, 162, 75, 0.14);
   --ink: #ece5d4;
   --ink-dim: #9a927e;
   --light-piece: #f3ead3;
@@ -59,13 +61,107 @@ body {
   letter-spacing: 0.02em;
 }
 
+/* Museum-plate title treatment: gold leaf catching light. */
+.gold-text {
+  background: linear-gradient(168deg, var(--gold-bright) 12%, var(--gold) 45%, #a07f35 78%, var(--gold-bright) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* A thin engraved rule with a centered diamond — used under headings. */
+.ornament-rule {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--gold-soft);
+}
+
+.ornament-rule::before,
+.ornament-rule::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(90deg, transparent, var(--gold-soft));
+}
+
+.ornament-rule::after {
+  background: linear-gradient(90deg, var(--gold-soft), transparent);
+}
+
+/* Raised card surface shared by menu tiles, lobbies, and panels. Order
+   matters: .btn below overrides background for interactive cards. */
+.card {
+  background: var(--bg-raised);
+  border: 1px solid color-mix(in srgb, var(--frame-edge) 55%, transparent);
+  transition: border-color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+}
+
+.card:hover {
+  border-color: var(--gold-soft);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35), 0 0 24px var(--gold-faint);
+}
+
+/* Menu backdrop: layered glows + a colossal rosette watermark, fixed so the
+   scene stays still while content scrolls. */
+.menu-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+.menu-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(50% 38% at 78% 8%, var(--gold-faint) 0%, transparent 70%),
+    radial-gradient(42% 32% at 12% 88%, rgba(60, 78, 120, 0.12) 0%, transparent 70%);
+}
+
+.menu-shell::after {
+  content: "";
+  position: fixed;
+  right: -12rem;
+  top: -12rem;
+  width: 42rem;
+  height: 42rem;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cg fill='none' stroke='%23c9a24b' stroke-width='1.6'%3E%3Cellipse cx='100' cy='55' rx='26' ry='48'/%3E%3Cellipse cx='100' cy='55' rx='26' ry='48' transform='rotate(45 100 100)'/%3E%3Cellipse cx='100' cy='55' rx='26' ry='48' transform='rotate(90 100 100)'/%3E%3Cellipse cx='100' cy='55' rx='26' ry='48' transform='rotate(135 100 100)'/%3E%3Cellipse cx='100' cy='55' rx='26' ry='48' transform='rotate(180 100 100)'/%3E%3Cellipse cx='100' cy='55' rx='26' ry='48' transform='rotate(225 100 100)'/%3E%3Cellipse cx='100' cy='55' rx='26' ry='48' transform='rotate(270 100 100)'/%3E%3Cellipse cx='100' cy='55' rx='26' ry='48' transform='rotate(315 100 100)'/%3E%3Ccircle cx='100' cy='100' r='12'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+
+/* The homepage's living board: a fixed-aspect container the fit system can
+   measure, angled slightly like a piece on display. */
+.vignette-board {
+  container-type: size;
+  aspect-ratio: 8 / 3;
+  width: 100%;
+  filter: drop-shadow(0 30px 50px rgba(0, 0, 0, 0.5));
+}
+
+.vignette-tilt {
+  transform: perspective(1200px) rotateX(7deg) rotateZ(-1.2deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vignette-tilt {
+    transform: none;
+  }
+}
+
 .board-frame {
   position: relative;
-  background: linear-gradient(160deg, #201a12 0%, var(--frame) 55%, #14100b 100%);
+  background: linear-gradient(160deg, #241c12 0%, var(--frame) 52%, #120e09 100%);
   border: 1px solid var(--frame-edge);
   box-shadow:
     0 24px 60px rgba(0, 0, 0, 0.55),
-    inset 0 1px 0 rgba(255, 235, 190, 0.08);
+    0 0 90px var(--gold-faint),
+    inset 0 1px 0 rgba(255, 235, 190, 0.09);
 }
 
 /* A whisper of grain so the frame reads as worked wood, not a flat gradient.
@@ -76,21 +172,46 @@ body {
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  opacity: 0.05;
+  opacity: 0.07;
   mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
+/* Gold inlay line just inside the frame edge — the double border of a
+   presentation case. */
+.board-frame::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: inherit;
+  border: 1px solid rgba(201, 162, 75, 0.28);
+  pointer-events: none;
+}
+
+/* Tiles: ivory plaques with corner studs and an engraved inner line — an
+   echo of the original board's shell-and-lapis mosaic borders. All drawn
+   with gradients; no assets. */
 .tile {
   background:
+    radial-gradient(circle at 12% 12%, rgba(122, 96, 50, 0.4) 1px, transparent 2.2px),
+    radial-gradient(circle at 88% 12%, rgba(122, 96, 50, 0.4) 1px, transparent 2.2px),
+    radial-gradient(circle at 12% 88%, rgba(122, 96, 50, 0.4) 1px, transparent 2.2px),
+    radial-gradient(circle at 88% 88%, rgba(122, 96, 50, 0.4) 1px, transparent 2.2px),
     radial-gradient(120% 120% at 30% 20%, rgba(255, 255, 255, 0.16) 0%, transparent 55%),
     var(--tile);
   border: 1px solid var(--tile-edge);
-  box-shadow: inset 0 -2px 4px rgba(90, 70, 30, 0.25);
+  box-shadow:
+    inset 0 0 0 2.5px rgba(255, 252, 240, 0.55),
+    inset 0 0 0 3.5px rgba(148, 122, 74, 0.28),
+    inset 0 -2px 4px rgba(90, 70, 30, 0.25);
 }
 
 .tile-lane {
   background:
+    radial-gradient(circle at 12% 12%, rgba(122, 96, 50, 0.4) 1px, transparent 2.2px),
+    radial-gradient(circle at 88% 12%, rgba(122, 96, 50, 0.4) 1px, transparent 2.2px),
+    radial-gradient(circle at 12% 88%, rgba(122, 96, 50, 0.4) 1px, transparent 2.2px),
+    radial-gradient(circle at 88% 88%, rgba(122, 96, 50, 0.4) 1px, transparent 2.2px),
     radial-gradient(120% 120% at 30% 20%, rgba(255, 255, 255, 0.18) 0%, transparent 55%),
     var(--tile-lane);
 }
@@ -167,10 +288,30 @@ body {
   white-space: nowrap;
 }
 
+/* The dice pit: a leather-dark well the pyramids tumble in. Overrides the
+   utility bg (unlayered CSS beats Tailwind's layered utilities). */
+.dice-tray {
+  background: linear-gradient(180deg, #0d1017 0%, #12161f 100%);
+  border: 1px solid color-mix(in srgb, var(--frame-edge) 45%, transparent);
+  box-shadow:
+    inset 0 2px 10px rgba(0, 0, 0, 0.45),
+    inset 0 -1px 0 rgba(255, 235, 190, 0.05);
+}
+
+/* Parchment theme keeps its own ink readable: a suede pit instead of a
+   near-black one. */
+:root[data-theme="light"] .dice-tray {
+  background: linear-gradient(180deg, #ddceab 0%, #e6d9ba 100%);
+  box-shadow:
+    inset 0 2px 8px rgba(90, 70, 30, 0.22),
+    inset 0 -1px 0 rgba(255, 252, 240, 0.6);
+}
+
 /* Active player card: lit left edge + soft lift. */
 .player-panel {
   position: relative;
-  transition: background-color 200ms ease, box-shadow 200ms ease;
+  border: 1px solid transparent;
+  transition: background-color 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
 }
 
 .player-panel--active {
@@ -191,6 +332,21 @@ body {
   box-shadow: 0 0 18px rgba(201, 162, 75, 0.18);
 }
 
+/* Parchment theme: buttons become aged paper, not night wood — --ink flips
+   dark there, so the dark gradient above would swallow its own label. */
+:root[data-theme="light"] .btn {
+  background: linear-gradient(180deg, #fbf3dd, #eedebe);
+  border-color: #a89468;
+}
+
+/* Gold primary stays gold in both themes (higher specificity than the
+   parchment override above). */
+:root[data-theme="light"] .btn-primary {
+  background: linear-gradient(180deg, #e2bd66 0%, #c9a24b 45%, #a88338 100%);
+  border-color: #e5c87f;
+  color: #211906;
+}
+
 .btn:active:not(:disabled) {
   transform: translateY(1px);
 }
@@ -201,14 +357,21 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(180deg, #d8b25e, #b08a3e);
+  background: linear-gradient(180deg, #e2bd66 0%, #c9a24b 45%, #a88338 100%);
   border-color: #e5c87f;
   color: #211906;
   font-weight: 600;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 245, 215, 0.65),
+    inset 0 -2px 3px rgba(90, 64, 20, 0.35),
+    0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
 .btn-primary:hover:not(:disabled) {
-  box-shadow: 0 0 24px rgba(201, 162, 75, 0.35);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 245, 215, 0.65),
+    inset 0 -2px 3px rgba(90, 64, 20, 0.35),
+    0 0 24px rgba(201, 162, 75, 0.4);
 }
 
 @keyframes pulse-gold {
