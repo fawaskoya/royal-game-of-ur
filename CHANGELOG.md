@@ -7,6 +7,13 @@ All notable product changes. Format loosely follows [Keep a Changelog](https://k
 - Custom domain + public donations (Support UI hidden until domain and India-friendly checkout, e.g. Dodo Payments).
 - Cosmetic board/dice skins (see [docs/MONETIZATION.md](docs/MONETIZATION.md)).
 
+## [0.2.1] — 2026-07-10
+
+### Changed
+
+- **Mobile homepage readability** — larger title, mode titles (~16px), blurbs (13px), primary CTA, and footer chips; taller accordion hit targets; still one-screen with scroll fallback on short devices.
+- Support / tips UI remains **hidden** until custom domain + India-friendly checkout.
+
 ## [0.2.0] — 2026-07-10
 
 ### Added

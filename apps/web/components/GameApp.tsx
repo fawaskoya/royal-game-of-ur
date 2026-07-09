@@ -56,7 +56,7 @@ function timeAgo(iso: string): string {
 /* Engraved line icons for the mode cards — stroke-only, brand gold. */
 function IconDie() {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="var(--gold)" strokeWidth="1.5" strokeLinejoin="round" aria-hidden>
+    <svg viewBox="0 0 24 24" className="h-6 w-6 lg:h-6 lg:w-6" fill="none" stroke="var(--gold)" strokeWidth="1.5" strokeLinejoin="round" aria-hidden>
       <path d="M12 3 L21 20 L3 20 Z" />
       <path d="M12 3 L12 20" opacity="0.5" />
       <circle cx="12" cy="15.5" r="1.4" fill="var(--gold)" stroke="none" />
@@ -66,7 +66,7 @@ function IconDie() {
 
 function IconTwoPieces() {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="var(--gold)" strokeWidth="1.5" aria-hidden>
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="var(--gold)" strokeWidth="1.5" aria-hidden>
       <circle cx="9" cy="12" r="5.5" />
       <circle cx="16.5" cy="12" r="5.5" opacity="0.55" />
       <circle cx="9" cy="12" r="1.3" fill="var(--gold)" stroke="none" />
@@ -76,7 +76,7 @@ function IconTwoPieces() {
 
 function IconEye() {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="var(--gold)" strokeWidth="1.5" strokeLinejoin="round" aria-hidden>
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="var(--gold)" strokeWidth="1.5" strokeLinejoin="round" aria-hidden>
       <path d="M2.5 12 C6 6.5 18 6.5 21.5 12 C18 17.5 6 17.5 2.5 12 Z" />
       <circle cx="12" cy="12" r="2.6" />
     </svg>
@@ -85,7 +85,7 @@ function IconEye() {
 
 function IconGlobe() {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="var(--gold)" strokeWidth="1.5" aria-hidden>
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="var(--gold)" strokeWidth="1.5" aria-hidden>
       <circle cx="12" cy="12" r="8.5" />
       <path d="M3.5 12 h17 M12 3.5 c3.2 2.6 3.2 14.4 0 17 M12 3.5 c-3.2 2.6 -3.2 14.4 0 17" opacity="0.6" />
     </svg>
@@ -94,7 +94,7 @@ function IconGlobe() {
 
 function IconScroll() {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="var(--gold)" strokeWidth="1.5" strokeLinejoin="round" aria-hidden>
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="var(--gold)" strokeWidth="1.5" strokeLinejoin="round" aria-hidden>
       <path d="M7 4.5 h9 a2 2 0 0 1 2 2 v11 a1.5 1.5 0 0 1 -1.5 1.5 H8.5 A1.5 1.5 0 0 1 7 17.5 V4.5 Z" />
       <path d="M7 4.5 A2 2 0 0 0 5 6.5 V18" opacity="0.55" />
       <path d="M10 9 h6 M10 12.5 h6 M10 16 h4" opacity="0.7" />
@@ -104,7 +104,7 @@ function IconScroll() {
 
 function IconMatch() {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="var(--gold)" strokeWidth="1.5" aria-hidden>
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="var(--gold)" strokeWidth="1.5" aria-hidden>
       <circle cx="8" cy="10" r="3.2" />
       <circle cx="16" cy="10" r="3.2" />
       <path d="M4.5 18 c1.2 -2.5 3 -3.5 3.5 -3.5 s2.3 1 3.5 3.5" opacity="0.75" />
@@ -137,11 +137,11 @@ function DifficultySelect({
   compact?: boolean;
 }) {
   return (
-    <label className={["flex items-center justify-between gap-3", compact ? "text-xs" : "text-sm"].join(" ")} htmlFor={id}>
+    <label className={["flex items-center justify-between gap-3", compact ? "text-sm" : "text-sm"].join(" ")} htmlFor={id}>
       <span className="text-[var(--ink-dim)]">{label}</span>
       <select
         id={id}
-        className={["btn rounded-lg text-sm", compact ? "px-2 py-1" : "px-3 py-1.5"].join(" ")}
+        className={["btn rounded-lg text-sm", compact ? "min-h-10 px-2.5 py-1.5" : "px-3 py-1.5"].join(" ")}
         value={value}
         onChange={(e) => onChange(e.target.value as DifficultyId)}
       >
@@ -290,13 +290,13 @@ export function GameApp() {
           />
           {selectedInfo && !compact ? <p className="text-xs text-[var(--ink-dim)]">{selectedInfo.description}</p> : null}
           <label
-            className={["flex items-center justify-between gap-3", compact ? "text-xs" : "text-sm"].join(" ")}
+            className="flex items-center justify-between gap-3 text-sm"
             htmlFor={compact ? "m-seat" : "seat"}
           >
             <span className="text-[var(--ink-dim)]">You play</span>
             <select
               id={compact ? "m-seat" : "seat"}
-              className={["btn rounded-lg text-sm", compact ? "px-2 py-1" : "px-3 py-1.5"].join(" ")}
+              className={["btn rounded-lg text-sm", compact ? "min-h-10 px-2.5 py-1.5" : "px-3 py-1.5"].join(" ")}
               value={seat}
               onChange={(e) => setSeat(Number(e.target.value) as PlayerId)}
             >
@@ -325,24 +325,24 @@ export function GameApp() {
         </>
       ) : null}
       {choice === "pvp" ? (
-        <p className={["text-[var(--ink-dim)]", compact ? "text-[11px] leading-snug" : "text-xs"].join(" ")}>
+        <p className={["text-[var(--ink-dim)] leading-snug", compact ? "text-[13px]" : "text-xs"].join(" ")}>
           Light rolls first. Rosettes grant another throw; the central rosette is safe.
         </p>
       ) : null}
       {choice === "room" ? (
-        <p className={["text-[var(--ink-dim)]", compact ? "text-[11px] leading-snug" : "text-xs"].join(" ")}>
+        <p className={["text-[var(--ink-dim)] leading-snug", compact ? "text-[13px]" : "text-xs"].join(" ")}>
           {isOnlineConfigured()
             ? "Share a 4-letter code — opponent joins any device. Server throws the dice."
             : "Two browser windows, one board. Create in one, join with the code in the other."}
         </p>
       ) : null}
       {choice === "tutorial" ? (
-        <p className={["text-[var(--ink-dim)]", compact ? "text-[11px] leading-snug" : "text-xs"].join(" ")}>
+        <p className={["text-[var(--ink-dim)] leading-snug", compact ? "text-[13px]" : "text-xs"].join(" ")}>
           Guided opening on the real rules — captures, rosettes, bear-off. ~2 minutes.
         </p>
       ) : null}
       {choice === "match" ? (
-        <p className={["text-[var(--ink-dim)]", compact ? "text-[11px] leading-snug" : "text-xs"].join(" ")}>
+        <p className={["text-[var(--ink-dim)] leading-snug", compact ? "text-[13px]" : "text-xs"].join(" ")}>
           {isOnlineConfigured()
             ? "Casual Elo vs anyone online. Guests welcome; sign up to keep your rating."
             : "Needs Supabase env in this build. Private rooms still work locally."}
@@ -355,29 +355,29 @@ export function GameApp() {
     <>
       <button
         className={[
-          "btn rounded-lg text-sm",
-          compact ? "px-2.5 py-1 text-xs" : "px-4 py-1.5",
+          "btn rounded-lg",
+          compact ? "min-h-9 px-3 py-1.5 text-sm" : "px-4 py-1.5 text-sm",
           firstRun ? "pulse-gold ring-1 ring-[var(--gold)]" : "",
         ].join(" ")}
         onClick={() => setGuideOpen(true)}
       >
         How to play
       </button>
-      <button className={["btn rounded-lg text-sm", compact ? "px-2.5 py-1 text-xs" : "px-4 py-1.5"].join(" ")} onClick={() => setArchiveOpen(true)}>
+      <button className={["btn rounded-lg", compact ? "min-h-9 px-3 py-1.5 text-sm" : "px-4 py-1.5 text-sm"].join(" ")} onClick={() => setArchiveOpen(true)}>
         Replays
       </button>
-      <button className={["btn rounded-lg text-sm", compact ? "px-2.5 py-1 text-xs" : "px-4 py-1.5"].join(" ")} onClick={() => setStatsOpen(true)}>
+      <button className={["btn rounded-lg", compact ? "min-h-9 px-3 py-1.5 text-sm" : "px-4 py-1.5 text-sm"].join(" ")} onClick={() => setStatsOpen(true)}>
         Stats
       </button>
       {isOnlineConfigured() ? (
-        <button className={["btn rounded-lg text-sm", compact ? "px-2.5 py-1 text-xs" : "px-4 py-1.5"].join(" ")} onClick={() => setBoardOpen(true)}>
+        <button className={["btn rounded-lg", compact ? "min-h-9 px-3 py-1.5 text-sm" : "px-4 py-1.5 text-sm"].join(" ")} onClick={() => setBoardOpen(true)}>
           Ladder
         </button>
       ) : null}
-      <button className={["btn rounded-lg text-sm", compact ? "px-2.5 py-1 text-xs" : "px-4 py-1.5"].join(" ")} onClick={() => setSettingsOpen(true)}>
+      <button className={["btn rounded-lg", compact ? "min-h-9 px-3 py-1.5 text-sm" : "px-4 py-1.5 text-sm"].join(" ")} onClick={() => setSettingsOpen(true)}>
         Settings
       </button>
-      <button className={["btn rounded-lg text-sm", compact ? "px-2.5 py-1 text-xs" : "px-4 py-1.5"].join(" ")} onClick={() => fileInputRef.current?.click()}>
+      <button className={["btn rounded-lg", compact ? "min-h-9 px-3 py-1.5 text-sm" : "px-4 py-1.5 text-sm"].join(" ")} onClick={() => fileInputRef.current?.click()}>
         Import
       </button>
     </>
@@ -443,28 +443,28 @@ export function GameApp() {
     <>
       {fileInput}
 
-      {/* ── Mobile: single-screen compact shell ─────────────────────────── */}
-      <main className="menu-shell mx-auto flex h-dvh max-h-dvh w-full max-w-lg flex-col overflow-hidden px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-[max(0.5rem,env(safe-area-inset-top))] lg:hidden">
+      {/* ── Mobile: single-screen shell, larger type for readability ───── */}
+      <main className="menu-shell mx-auto flex h-dvh max-h-dvh w-full max-w-lg flex-col overflow-hidden px-3.5 pb-[max(0.65rem,env(safe-area-inset-bottom))] pt-[max(0.65rem,env(safe-area-inset-top))] lg:hidden">
         <header className="shrink-0 text-center">
-          <div className="text-[10px] uppercase tracking-[0.28em] text-[var(--ink-dim)]">✦ c. 2600 BCE · Ur ✦</div>
-          <h1 className="font-display gold-text text-[1.65rem] leading-none tracking-wide">
+          <div className="text-[11px] uppercase tracking-[0.28em] text-[var(--ink-dim)]">✦ c. 2600 BCE · Ur ✦</div>
+          <h1 className="font-display gold-text mt-0.5 text-[1.85rem] leading-tight tracking-wide">
             Royal Game of Ur
           </h1>
         </header>
 
         {saved ? (
           <button
-            className="card card--gilded mt-2 shrink-0 rounded-lg px-3 py-2 text-left"
+            className="card card--gilded mt-2.5 shrink-0 rounded-xl px-3.5 py-2.5 text-left"
             onClick={continueGame}
           >
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
-                <div className="font-display text-sm text-[var(--gold)]">Continue</div>
-                <div className="truncate text-[11px] text-[var(--ink-dim)]">
+                <div className="font-display text-base text-[var(--gold)]">Continue</div>
+                <div className="truncate text-[13px] text-[var(--ink-dim)]">
                   {modeLabel(saved.mode)} · {timeAgo(saved.savedAt)}
                 </div>
               </div>
-              <span aria-hidden className="font-display text-lg text-[var(--gold)]">
+              <span aria-hidden className="font-display text-xl text-[var(--gold)]">
                 ›
               </span>
             </div>
@@ -472,49 +472,57 @@ export function GameApp() {
         ) : null}
 
         {/* Accordion mode cards — only the selected one expands options */}
-        <div className="mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          <div className="flex flex-col gap-1.5">
+        <div className="mt-2.5 min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div className="flex flex-col gap-2">
             {MODE_CARDS.map((card) => {
               const open = choice === card.id;
               return (
                 <div
                   key={card.id}
                   className={[
-                    "card overflow-hidden rounded-lg transition-[box-shadow,border-color]",
+                    "card overflow-hidden rounded-xl transition-[box-shadow,border-color]",
                     open ? "ring-1 ring-[var(--gold)]" : "",
                     firstRun && card.id === "tutorial" && open ? "card--gilded" : "",
                   ].join(" ")}
                 >
                   <button
                     type="button"
-                    className="btn flex w-full items-center gap-2.5 rounded-none px-3 py-2 text-left"
+                    className="btn flex min-h-[3.25rem] w-full items-center gap-3 rounded-none px-3.5 py-2.5 text-left"
                     onClick={() => setChoice(card.id)}
                     aria-expanded={open}
                   >
-                    <span className="shrink-0 opacity-80">{card.icon()}</span>
+                    <span className="shrink-0 opacity-90">{card.icon()}</span>
                     <span className="min-w-0 flex-1">
-                      <span className="font-display flex items-center gap-1.5 text-sm leading-tight">
+                      <span className="font-display flex flex-wrap items-center gap-1.5 text-[1.05rem] leading-tight">
                         {card.title}
                         {card.id === "room" ? (
-                          <span className="chip text-[10px]">{isOnlineConfigured() ? "online" : "local"}</span>
+                          <span className="chip text-[11px]">{isOnlineConfigured() ? "online" : "local"}</span>
                         ) : null}
-                        {card.id === "match" && isOnlineConfigured() ? <span className="chip text-[10px]">live</span> : null}
+                        {card.id === "match" && isOnlineConfigured() ? <span className="chip text-[11px]">live</span> : null}
                       </span>
                       {!open ? (
-                        <span className="mt-0.5 block truncate text-[11px] text-[var(--ink-dim)]">{card.blurb}</span>
+                        <span className="mt-0.5 block line-clamp-2 text-[13px] leading-snug text-[var(--ink-dim)]">
+                          {card.blurb}
+                        </span>
                       ) : null}
                     </span>
                     <span
                       aria-hidden
-                      className={["shrink-0 text-[var(--gold)] transition-transform", open ? "rotate-90" : ""].join(" ")}
+                      className={[
+                        "shrink-0 text-lg text-[var(--gold)] transition-transform",
+                        open ? "rotate-90" : "",
+                      ].join(" ")}
                     >
                       ›
                     </span>
                   </button>
                   {open ? (
-                    <div className="flex flex-col gap-2 border-t border-[var(--gold-faint)] px-3 pb-2.5 pt-2">
+                    <div className="flex flex-col gap-2.5 border-t border-[var(--gold-faint)] px-3.5 pb-3 pt-2.5">
                       {modeOptions(true)}
-                      <button className="btn btn-primary w-full rounded-lg px-4 py-2 text-sm" onClick={start}>
+                      <button
+                        className="btn btn-primary min-h-11 w-full rounded-xl px-4 py-2.5 text-base font-medium"
+                        onClick={start}
+                      >
                         {primaryLabel}
                       </button>
                     </div>
@@ -525,9 +533,9 @@ export function GameApp() {
           </div>
         </div>
 
-        <footer className="mt-2 shrink-0">
-          <div className="flex flex-wrap justify-center gap-1.5">{secondaryLinks(true)}</div>
-          {importError ? <p className="mt-1 text-center text-[11px] text-[var(--danger)]">{importError}</p> : null}
+        <footer className="mt-2.5 shrink-0">
+          <div className="flex flex-wrap justify-center gap-2">{secondaryLinks(true)}</div>
+          {importError ? <p className="mt-1.5 text-center text-[13px] text-[var(--danger)]">{importError}</p> : null}
         </footer>
       </main>
 
