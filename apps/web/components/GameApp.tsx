@@ -13,6 +13,7 @@ import { TutorialView } from "./TutorialView";
 import { SettingsPanel } from "./SettingsPanel";
 import { StatsPanel } from "./StatsPanel";
 import { LeaderboardPanel } from "./LeaderboardPanel";
+import { SupportPanel } from "./SupportPanel";
 import { ReplayViewer } from "./ReplayViewer";
 import { ArchivePanel } from "./ArchivePanel";
 import { OnlineRoomView } from "./OnlineRoomView";
@@ -56,7 +57,7 @@ function timeAgo(iso: string): string {
 /* Engraved line icons for the mode cards — stroke-only, brand gold. */
 function IconDie() {
   return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="var(--gold)" strokeWidth="1.5" strokeLinejoin="round" aria-hidden>
+    <svg viewBox="0 0 24 24" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="var(--gold)" strokeWidth="1.5" strokeLinejoin="round" aria-hidden>
       <path d="M12 3 L21 20 L3 20 Z" />
       <path d="M12 3 L12 20" opacity="0.5" />
       <circle cx="12" cy="15.5" r="1.4" fill="var(--gold)" stroke="none" />
@@ -66,7 +67,7 @@ function IconDie() {
 
 function IconTwoPieces() {
   return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="var(--gold)" strokeWidth="1.5" aria-hidden>
+    <svg viewBox="0 0 24 24" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="var(--gold)" strokeWidth="1.5" aria-hidden>
       <circle cx="9" cy="12" r="5.5" />
       <circle cx="16.5" cy="12" r="5.5" opacity="0.55" />
       <circle cx="9" cy="12" r="1.3" fill="var(--gold)" stroke="none" />
@@ -76,7 +77,7 @@ function IconTwoPieces() {
 
 function IconEye() {
   return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="var(--gold)" strokeWidth="1.5" strokeLinejoin="round" aria-hidden>
+    <svg viewBox="0 0 24 24" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="var(--gold)" strokeWidth="1.5" strokeLinejoin="round" aria-hidden>
       <path d="M2.5 12 C6 6.5 18 6.5 21.5 12 C18 17.5 6 17.5 2.5 12 Z" />
       <circle cx="12" cy="12" r="2.6" />
     </svg>
@@ -85,7 +86,7 @@ function IconEye() {
 
 function IconGlobe() {
   return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="var(--gold)" strokeWidth="1.5" aria-hidden>
+    <svg viewBox="0 0 24 24" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="var(--gold)" strokeWidth="1.5" aria-hidden>
       <circle cx="12" cy="12" r="8.5" />
       <path d="M3.5 12 h17 M12 3.5 c3.2 2.6 3.2 14.4 0 17 M12 3.5 c-3.2 2.6 -3.2 14.4 0 17" opacity="0.6" />
     </svg>
@@ -94,7 +95,7 @@ function IconGlobe() {
 
 function IconScroll() {
   return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="var(--gold)" strokeWidth="1.5" strokeLinejoin="round" aria-hidden>
+    <svg viewBox="0 0 24 24" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="var(--gold)" strokeWidth="1.5" strokeLinejoin="round" aria-hidden>
       <path d="M7 4.5 h9 a2 2 0 0 1 2 2 v11 a1.5 1.5 0 0 1 -1.5 1.5 H8.5 A1.5 1.5 0 0 1 7 17.5 V4.5 Z" />
       <path d="M7 4.5 A2 2 0 0 0 5 6.5 V18" opacity="0.55" />
       <path d="M10 9 h6 M10 12.5 h6 M10 16 h4" opacity="0.7" />
@@ -104,7 +105,7 @@ function IconScroll() {
 
 function IconMatch() {
   return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="var(--gold)" strokeWidth="1.5" aria-hidden>
+    <svg viewBox="0 0 24 24" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="var(--gold)" strokeWidth="1.5" aria-hidden>
       <circle cx="8" cy="10" r="3.2" />
       <circle cx="16" cy="10" r="3.2" />
       <path d="M4.5 18 c1.2 -2.5 3 -3.5 3.5 -3.5 s2.3 1 3.5 3.5" opacity="0.75" />
@@ -128,18 +129,20 @@ function DifficultySelect({
   label,
   value,
   onChange,
+  compact,
 }: {
   id: string;
   label: string;
   value: DifficultyId;
   onChange(v: DifficultyId): void;
+  compact?: boolean;
 }) {
   return (
-    <label className="flex items-center justify-between gap-3 text-sm" htmlFor={id}>
+    <label className={["flex items-center justify-between gap-3", compact ? "text-xs" : "text-sm"].join(" ")} htmlFor={id}>
       <span className="text-[var(--ink-dim)]">{label}</span>
       <select
         id={id}
-        className="btn rounded-lg px-3 py-1.5 text-sm"
+        className={["btn rounded-lg text-sm", compact ? "px-2 py-1" : "px-3 py-1.5"].join(" ")}
         value={value}
         onChange={(e) => onChange(e.target.value as DifficultyId)}
       >
@@ -168,6 +171,7 @@ export function GameApp() {
   const [boardOpen, setBoardOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
   const [tutorialActive, setTutorialActive] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [roomActive, setRoomActive] = useState(false);
@@ -177,9 +181,6 @@ export function GameApp() {
   const [importError, setImportError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // (Re)check for a saved game whenever the menu is showing — the game
-  // auto-saves, so returning from a live game brings its save with it.
-  // First-run detection nudges newcomers toward the tutorial.
   useEffect(() => {
     if (mode === null && !tutorialActive && !matchActive && !roomActive) {
       setSaved(loadGame());
@@ -269,218 +270,136 @@ export function GameApp() {
   };
 
   const selectedInfo = DIFFICULTIES.find((d) => d.id === difficulty);
+  const primaryLabel =
+    choice === "room"
+      ? "Enter lobby"
+      : choice === "tutorial"
+        ? "Start tutorial"
+        : choice === "match"
+          ? "Find match"
+          : "Begin";
 
-  const secondaryLinks = (
+  const modeOptions = (compact: boolean) => (
+    <>
+      {choice === "ai" ? (
+        <>
+          <DifficultySelect
+            id={compact ? "m-difficulty" : "difficulty"}
+            label="Opponent"
+            value={difficulty}
+            onChange={setDifficulty}
+            compact={compact}
+          />
+          {selectedInfo && !compact ? <p className="text-xs text-[var(--ink-dim)]">{selectedInfo.description}</p> : null}
+          <label
+            className={["flex items-center justify-between gap-3", compact ? "text-xs" : "text-sm"].join(" ")}
+            htmlFor={compact ? "m-seat" : "seat"}
+          >
+            <span className="text-[var(--ink-dim)]">You play</span>
+            <select
+              id={compact ? "m-seat" : "seat"}
+              className={["btn rounded-lg text-sm", compact ? "px-2 py-1" : "px-3 py-1.5"].join(" ")}
+              value={seat}
+              onChange={(e) => setSeat(Number(e.target.value) as PlayerId)}
+            >
+              <option value={0}>Light (first)</option>
+              <option value={1}>Dark (second)</option>
+            </select>
+          </label>
+        </>
+      ) : null}
+      {choice === "watch" ? (
+        <>
+          <DifficultySelect
+            id={compact ? "m-light-ai" : "light-ai"}
+            label="Light engine"
+            value={lightAi}
+            onChange={setLightAi}
+            compact={compact}
+          />
+          <DifficultySelect
+            id={compact ? "m-dark-ai" : "dark-ai"}
+            label="Dark engine"
+            value={darkAi}
+            onChange={setDarkAi}
+            compact={compact}
+          />
+        </>
+      ) : null}
+      {choice === "pvp" ? (
+        <p className={["text-[var(--ink-dim)]", compact ? "text-[11px] leading-snug" : "text-xs"].join(" ")}>
+          Light rolls first. Rosettes grant another throw; the central rosette is safe.
+        </p>
+      ) : null}
+      {choice === "room" ? (
+        <p className={["text-[var(--ink-dim)]", compact ? "text-[11px] leading-snug" : "text-xs"].join(" ")}>
+          {isOnlineConfigured()
+            ? "Share a 4-letter code — opponent joins any device. Server throws the dice."
+            : "Two browser windows, one board. Create in one, join with the code in the other."}
+        </p>
+      ) : null}
+      {choice === "tutorial" ? (
+        <p className={["text-[var(--ink-dim)]", compact ? "text-[11px] leading-snug" : "text-xs"].join(" ")}>
+          Guided opening on the real rules — captures, rosettes, bear-off. ~2 minutes.
+        </p>
+      ) : null}
+      {choice === "match" ? (
+        <p className={["text-[var(--ink-dim)]", compact ? "text-[11px] leading-snug" : "text-xs"].join(" ")}>
+          {isOnlineConfigured()
+            ? "Casual Elo vs anyone online. Guests welcome; sign up to keep your rating."
+            : "Needs Supabase env in this build. Private rooms still work locally."}
+        </p>
+      ) : null}
+    </>
+  );
+
+  const secondaryLinks = (compact: boolean) => (
     <>
       <button
         className={[
-          "btn rounded-lg px-4 py-1.5 text-sm",
+          "btn rounded-lg text-sm",
+          compact ? "px-2.5 py-1 text-xs" : "px-4 py-1.5",
           firstRun ? "pulse-gold ring-1 ring-[var(--gold)]" : "",
         ].join(" ")}
         onClick={() => setGuideOpen(true)}
       >
         How to play
       </button>
-      <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => setArchiveOpen(true)}>
+      <button className={["btn rounded-lg text-sm", compact ? "px-2.5 py-1 text-xs" : "px-4 py-1.5"].join(" ")} onClick={() => setArchiveOpen(true)}>
         Replays
       </button>
-      <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => setStatsOpen(true)}>
+      <button className={["btn rounded-lg text-sm", compact ? "px-2.5 py-1 text-xs" : "px-4 py-1.5"].join(" ")} onClick={() => setStatsOpen(true)}>
         Stats
       </button>
       {isOnlineConfigured() ? (
-        <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => setBoardOpen(true)}>
-          Leaderboard
+        <button className={["btn rounded-lg text-sm", compact ? "px-2.5 py-1 text-xs" : "px-4 py-1.5"].join(" ")} onClick={() => setBoardOpen(true)}>
+          Ladder
         </button>
       ) : null}
-      <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => setSettingsOpen(true)}>
+      <button className={["btn rounded-lg text-sm", compact ? "px-2.5 py-1 text-xs" : "px-4 py-1.5"].join(" ")} onClick={() => setSettingsOpen(true)}>
         Settings
       </button>
-      <button className="btn rounded-lg px-4 py-1.5 text-sm" onClick={() => fileInputRef.current?.click()}>
-        Import replay
+      <button className={["btn rounded-lg text-sm", compact ? "px-2.5 py-1 text-xs" : "px-4 py-1.5"].join(" ")} onClick={() => fileInputRef.current?.click()}>
+        Import
+      </button>
+      <button className={["btn rounded-lg text-sm", compact ? "px-2.5 py-1 text-xs" : "px-4 py-1.5"].join(" ")} onClick={() => setSupportOpen(true)}>
+        Support
       </button>
     </>
   );
 
-  return (
-    <main className="menu-shell mx-auto flex min-h-dvh w-full max-w-6xl flex-col justify-center gap-8 px-5 py-10 lg:py-8 lg:px-8">
-      {/* Always-mounted so desktop + mobile Import both work */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="application/json,.json"
-        className="sr-only"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          e.target.value = "";
-          if (file) void handleReplayFile(file);
-        }}
-      />
-
-      <section className="grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-x-10 lg:items-start">
-        <div className="flex flex-col gap-5 text-center lg:text-left lg:pt-2">
-          <div className="text-xs uppercase tracking-[0.35em] text-[var(--ink-dim)]">
-            ✦&ensp;c. 2600 BCE · Mesopotamia&ensp;✦
-          </div>
-          <h1 className="font-display gold-text text-4xl leading-tight sm:text-5xl lg:text-6xl">
-            Royal Game
-            <br />
-            of Ur
-          </h1>
-          <p className="mx-auto max-w-md text-sm leading-relaxed text-[var(--ink-dim)] lg:mx-0">
-            The world&apos;s oldest playable board game — buried with the queens of Ur, decoded
-            from a Babylonian tablet, alive on your screen. Race your seven pieces home;
-            rosettes grant another throw; the shared lane is a battlefield.
-          </p>
-
-          {saved ? (
-            <button
-              className="card card--gilded group w-full rounded-xl px-4 py-3 text-left"
-              onClick={continueGame}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="font-display text-[var(--gold)]">Continue game</div>
-                  <div className="mt-0.5 text-xs text-[var(--ink-dim)]">
-                    {modeLabel(saved.mode)} · saved {timeAgo(saved.savedAt)}
-                  </div>
-                </div>
-                <span aria-hidden className="font-display text-xl text-[var(--gold)] transition-transform group-hover:translate-x-0.5">
-                  ›
-                </span>
-              </div>
-            </button>
-          ) : null}
-
-          <div className="ornament-rule mt-1 hidden text-xs lg:flex">✦</div>
-          <div className="hidden flex-wrap gap-2 lg:flex">{secondaryLinks}</div>
-          {importError ? <p className="hidden text-xs text-[var(--danger)] lg:block">{importError}</p> : null}
-          <footer className="hidden text-xs text-[var(--ink-dim)] lg:block">
-            Classic Irving Finkel rules · British Museum reconstruction
-          </footer>
-        </div>
-
-        <div className="flex min-w-0 flex-col gap-4">
-          {/* Vignette scales down on short laptop viewports so Begin never clips */}
-          <div className="hidden lg:block lg:max-h-[min(220px,28vh)] lg:overflow-hidden">
-            <MenuVignette />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {MODE_CARDS.map((card) => (
-              <button
-                key={card.id}
-                className={[
-                  "card btn w-full rounded-xl px-4 py-3.5 text-left",
-                  choice === card.id ? "ring-1 ring-[var(--gold)]" : "",
-                  firstRun && card.id === "tutorial" && choice === "tutorial" ? "card--gilded" : "",
-                ].join(" ")}
-                onClick={() => setChoice(card.id)}
-                aria-pressed={choice === card.id}
-              >
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 shrink-0 opacity-80">{card.icon()}</span>
-                  <span>
-                    <span className="font-display block">
-                      {card.title}
-                      {card.id === "room" ? (
-                        <span className="chip ml-2 align-middle">
-                          {isOnlineConfigured() ? "online" : "same device"}
-                        </span>
-                      ) : null}
-                      {card.id === "match" && isOnlineConfigured() ? (
-                        <span className="chip ml-2 align-middle">live</span>
-                      ) : null}
-                    </span>
-                    <span className="mt-0.5 block text-xs text-[var(--ink-dim)]">{card.blurb}</span>
-                  </span>
-                </div>
-              </button>
-            ))}
-          </div>
-
-          <div className="card flex flex-col gap-3 rounded-xl p-4">
-            {choice === "ai" ? (
-              <>
-                <DifficultySelect id="difficulty" label="Opponent" value={difficulty} onChange={setDifficulty} />
-                {selectedInfo ? <p className="text-xs text-[var(--ink-dim)]">{selectedInfo.description}</p> : null}
-                <label className="flex items-center justify-between gap-3 text-sm" htmlFor="seat">
-                  <span className="text-[var(--ink-dim)]">You play</span>
-                  <select
-                    id="seat"
-                    className="btn rounded-lg px-3 py-1.5 text-sm"
-                    value={seat}
-                    onChange={(e) => setSeat(Number(e.target.value) as PlayerId)}
-                  >
-                    <option value={0}>Light (first)</option>
-                    <option value={1}>Dark (second)</option>
-                  </select>
-                </label>
-              </>
-            ) : null}
-            {choice === "watch" ? (
-              <>
-                <DifficultySelect id="light-ai" label="Light engine" value={lightAi} onChange={setLightAi} />
-                <DifficultySelect id="dark-ai" label="Dark engine" value={darkAi} onChange={setDarkAi} />
-              </>
-            ) : null}
-            {choice === "pvp" ? (
-              <p className="text-xs text-[var(--ink-dim)]">
-                Light rolls first. Rosettes (the gold flowers) grant another throw; the central rosette is safe ground.
-              </p>
-            ) : null}
-            {choice === "room" ? (
-              <p className="text-xs text-[var(--ink-dim)]">
-                {isOnlineConfigured()
-                  ? "Create a room and share its 4-letter code — your opponent joins from any device. The server throws the dice and checks every move."
-                  : "Two windows of this browser, one board. Create a room in one window, join with the code from the other."}
-              </p>
-            ) : null}
-            {choice === "tutorial" ? (
-              <p className="text-xs text-[var(--ink-dim)]">
-                A guided opening on the real rules engine — forced dice, live captures and rosettes. You play Light;
-                the guide plays Dark. About two minutes.
-              </p>
-            ) : null}
-            {choice === "match" ? (
-              <p className="text-xs text-[var(--ink-dim)]">
-                {isOnlineConfigured()
-                  ? "Casual Elo matchmaking against anyone online. Guests can play; sign up to keep your rating. Server rolls the dice."
-                  : "Online matchmaking needs Supabase env keys in this build. Private rooms still work locally."}
-              </p>
-            ) : null}
-
-            <button className="btn btn-primary mt-1 rounded-lg px-5 py-2.5" onClick={start}>
-              {choice === "room"
-                ? "Enter the lobby"
-                : choice === "tutorial"
-                  ? "Start tutorial"
-                  : choice === "match"
-                    ? "Find match"
-                    : "Begin"}
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Mobile-only secondary row (desktop links live in the left column). */}
-      <section className="flex flex-col items-center gap-4 lg:hidden">
-        <div className="ornament-rule w-full max-w-3xl text-xs">✦</div>
-        <div className="flex flex-wrap justify-center gap-2">{secondaryLinks}</div>
-        {importError ? <p className="text-center text-xs text-[var(--danger)]">{importError}</p> : null}
-        <footer className="text-center text-xs text-[var(--ink-dim)]">
-          Classic Irving Finkel rules · British Museum reconstruction
-        </footer>
-      </section>
-
+  const panels = (
+    <>
       <StatsPanel open={statsOpen} onClose={() => setStatsOpen(false)} />
       <LeaderboardPanel open={boardOpen} onClose={() => setBoardOpen(false)} />
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <ArchivePanel open={archiveOpen} onClose={() => setArchiveOpen(false)} />
+      <SupportPanel open={supportOpen} onClose={() => setSupportOpen(false)} />
       <HowToPlay
         open={guideOpen}
         onClose={() => setGuideOpen(false)}
         onStartTutorial={() => setTutorialActive(true)}
       />
-
       <Modal
         open={confirmBegin}
         title="Start a new game?"
@@ -509,6 +428,211 @@ export function GameApp() {
           </>
         ) : null}
       </Modal>
-    </main>
+    </>
+  );
+
+  const fileInput = (
+    <input
+      ref={fileInputRef}
+      type="file"
+      accept="application/json,.json"
+      className="sr-only"
+      onChange={(e) => {
+        const file = e.target.files?.[0];
+        e.target.value = "";
+        if (file) void handleReplayFile(file);
+      }}
+    />
+  );
+
+  return (
+    <>
+      {fileInput}
+
+      {/* ── Mobile: single-screen compact shell ─────────────────────────── */}
+      <main className="menu-shell mx-auto flex h-dvh max-h-dvh w-full max-w-lg flex-col overflow-hidden px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-[max(0.5rem,env(safe-area-inset-top))] lg:hidden">
+        <header className="shrink-0 text-center">
+          <div className="text-[10px] uppercase tracking-[0.28em] text-[var(--ink-dim)]">✦ c. 2600 BCE · Ur ✦</div>
+          <h1 className="font-display gold-text text-[1.65rem] leading-none tracking-wide">
+            Royal Game of Ur
+          </h1>
+        </header>
+
+        {saved ? (
+          <button
+            className="card card--gilded mt-2 shrink-0 rounded-lg px-3 py-2 text-left"
+            onClick={continueGame}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <div className="font-display text-sm text-[var(--gold)]">Continue</div>
+                <div className="truncate text-[11px] text-[var(--ink-dim)]">
+                  {modeLabel(saved.mode)} · {timeAgo(saved.savedAt)}
+                </div>
+              </div>
+              <span aria-hidden className="font-display text-lg text-[var(--gold)]">
+                ›
+              </span>
+            </div>
+          </button>
+        ) : null}
+
+        {/* Accordion mode cards — only the selected one expands options */}
+        <div className="mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div className="flex flex-col gap-1.5">
+            {MODE_CARDS.map((card) => {
+              const open = choice === card.id;
+              return (
+                <div
+                  key={card.id}
+                  className={[
+                    "card overflow-hidden rounded-lg transition-[box-shadow,border-color]",
+                    open ? "ring-1 ring-[var(--gold)]" : "",
+                    firstRun && card.id === "tutorial" && open ? "card--gilded" : "",
+                  ].join(" ")}
+                >
+                  <button
+                    type="button"
+                    className="btn flex w-full items-center gap-2.5 rounded-none px-3 py-2 text-left"
+                    onClick={() => setChoice(card.id)}
+                    aria-expanded={open}
+                  >
+                    <span className="shrink-0 opacity-80">{card.icon()}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="font-display flex items-center gap-1.5 text-sm leading-tight">
+                        {card.title}
+                        {card.id === "room" ? (
+                          <span className="chip text-[10px]">{isOnlineConfigured() ? "online" : "local"}</span>
+                        ) : null}
+                        {card.id === "match" && isOnlineConfigured() ? <span className="chip text-[10px]">live</span> : null}
+                      </span>
+                      {!open ? (
+                        <span className="mt-0.5 block truncate text-[11px] text-[var(--ink-dim)]">{card.blurb}</span>
+                      ) : null}
+                    </span>
+                    <span
+                      aria-hidden
+                      className={["shrink-0 text-[var(--gold)] transition-transform", open ? "rotate-90" : ""].join(" ")}
+                    >
+                      ›
+                    </span>
+                  </button>
+                  {open ? (
+                    <div className="flex flex-col gap-2 border-t border-[var(--gold-faint)] px-3 pb-2.5 pt-2">
+                      {modeOptions(true)}
+                      <button className="btn btn-primary w-full rounded-lg px-4 py-2 text-sm" onClick={start}>
+                        {primaryLabel}
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <footer className="mt-2 shrink-0">
+          <div className="flex flex-wrap justify-center gap-1.5">{secondaryLinks(true)}</div>
+          {importError ? <p className="mt-1 text-center text-[11px] text-[var(--danger)]">{importError}</p> : null}
+        </footer>
+      </main>
+
+      {/* ── Desktop / tablet landscape ─────────────────────────────────── */}
+      <main className="menu-shell mx-auto hidden min-h-dvh w-full max-w-6xl flex-col justify-center gap-8 px-5 py-10 lg:flex lg:py-8 lg:px-8">
+        <section className="grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-start lg:gap-x-10">
+          <div className="flex flex-col gap-5 text-center lg:pt-2 lg:text-left">
+            <div className="text-xs uppercase tracking-[0.35em] text-[var(--ink-dim)]">
+              ✦&ensp;c. 2600 BCE · Mesopotamia&ensp;✦
+            </div>
+            <h1 className="font-display gold-text text-4xl leading-tight sm:text-5xl lg:text-6xl">
+              Royal Game
+              <br />
+              of Ur
+            </h1>
+            <p className="mx-auto max-w-md text-sm leading-relaxed text-[var(--ink-dim)] lg:mx-0">
+              The world&apos;s oldest playable board game — buried with the queens of Ur, decoded
+              from a Babylonian tablet, alive on your screen. Race your seven pieces home;
+              rosettes grant another throw; the shared lane is a battlefield.
+            </p>
+
+            {saved ? (
+              <button
+                className="card card--gilded group w-full rounded-xl px-4 py-3 text-left"
+                onClick={continueGame}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="font-display text-[var(--gold)]">Continue game</div>
+                    <div className="mt-0.5 text-xs text-[var(--ink-dim)]">
+                      {modeLabel(saved.mode)} · saved {timeAgo(saved.savedAt)}
+                    </div>
+                  </div>
+                  <span
+                    aria-hidden
+                    className="font-display text-xl text-[var(--gold)] transition-transform group-hover:translate-x-0.5"
+                  >
+                    ›
+                  </span>
+                </div>
+              </button>
+            ) : null}
+
+            <div className="ornament-rule mt-1 hidden text-xs lg:flex">✦</div>
+            <div className="hidden flex-wrap gap-2 lg:flex">{secondaryLinks(false)}</div>
+            {importError ? <p className="hidden text-xs text-[var(--danger)] lg:block">{importError}</p> : null}
+            <footer className="hidden text-xs text-[var(--ink-dim)] lg:block">
+              Classic Irving Finkel rules · British Museum reconstruction
+            </footer>
+          </div>
+
+          <div className="flex min-w-0 flex-col gap-4">
+            <div className="hidden lg:block lg:max-h-[min(220px,28vh)] lg:overflow-hidden">
+              <MenuVignette />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {MODE_CARDS.map((card) => (
+                <button
+                  key={card.id}
+                  className={[
+                    "card btn w-full rounded-xl px-4 py-3.5 text-left",
+                    choice === card.id ? "ring-1 ring-[var(--gold)]" : "",
+                    firstRun && card.id === "tutorial" && choice === "tutorial" ? "card--gilded" : "",
+                  ].join(" ")}
+                  onClick={() => setChoice(card.id)}
+                  aria-pressed={choice === card.id}
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 shrink-0 opacity-80">{card.icon()}</span>
+                    <span>
+                      <span className="font-display block">
+                        {card.title}
+                        {card.id === "room" ? (
+                          <span className="chip ml-2 align-middle">
+                            {isOnlineConfigured() ? "online" : "same device"}
+                          </span>
+                        ) : null}
+                        {card.id === "match" && isOnlineConfigured() ? (
+                          <span className="chip ml-2 align-middle">live</span>
+                        ) : null}
+                      </span>
+                      <span className="mt-0.5 block text-xs text-[var(--ink-dim)]">{card.blurb}</span>
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <div className="card flex flex-col gap-3 rounded-xl p-4">
+              {modeOptions(false)}
+              <button className="btn btn-primary mt-1 rounded-lg px-5 py-2.5" onClick={start}>
+                {primaryLabel === "Enter lobby" ? "Enter the lobby" : primaryLabel}
+              </button>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {panels}
+    </>
   );
 }

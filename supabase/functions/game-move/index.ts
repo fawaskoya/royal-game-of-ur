@@ -505,15 +505,15 @@ async function finalizeIfDecided(admin: AdminClient, gameId: string, state: Game
 async function applyRatings(admin: AdminClient, winnerId: string, loserId: string): Promise<void> {
   const { data: rows, error } = await admin
     .from("ratings")
-    .select("profile_id, rating, games_played")
+    .select("profile_id, rating, games_played, wins, losses")
     .in("profile_id", [winnerId, loserId])
     .eq("pool", "casual");
   if (error) throw new Error(error.message);
   const find = (id: string) => rows?.find((r) => r.profile_id === id) as
-    | { rating: number; games_played: number }
+    | { rating: number; games_played: number; wins?: number; losses?: number }
     | undefined;
-  const w = find(winnerId) ?? { rating: INITIAL_RATING, games_played: 0 };
-  const l = find(loserId) ?? { rating: INITIAL_RATING, games_played: 0 };
+  const w = find(winnerId) ?? { rating: INITIAL_RATING, games_played: 0, wins: 0, losses: 0 };
+  const l = find(loserId) ?? { rating: INITIAL_RATING, games_played: 0, wins: 0, losses: 0 };
   const next = applyResult(
     { rating: w.rating, games: w.games_played },
     { rating: l.rating, games: l.games_played },
@@ -521,8 +521,24 @@ async function applyRatings(admin: AdminClient, winnerId: string, loserId: strin
   const updated_at = new Date().toISOString();
   const { error: upsertError } = await admin.from("ratings").upsert(
     [
-      { profile_id: winnerId, pool: "casual", rating: next.winner, games_played: w.games_played + 1, updated_at },
-      { profile_id: loserId, pool: "casual", rating: next.loser, games_played: l.games_played + 1, updated_at },
+      {
+        profile_id: winnerId,
+        pool: "casual",
+        rating: next.winner,
+        games_played: w.games_played + 1,
+        wins: (w.wins ?? 0) + 1,
+        losses: w.losses ?? 0,
+        updated_at,
+      },
+      {
+        profile_id: loserId,
+        pool: "casual",
+        rating: next.loser,
+        games_played: l.games_played + 1,
+        wins: l.wins ?? 0,
+        losses: (l.losses ?? 0) + 1,
+        updated_at,
+      },
     ],
     { onConflict: "profile_id,pool" },
   );
