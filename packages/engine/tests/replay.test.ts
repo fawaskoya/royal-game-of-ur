@@ -81,6 +81,28 @@ describe("replay verification (anti-tamper)", () => {
     const events = [...final.history.slice(0, rollIdx + 1), { type: "pass", player: (final.history[rollIdx] as { player: 0 | 1 }).player, reason: "no-legal-moves" } as const];
     expect(() => buildStateFromEvents(final.ruleset, events)).toThrow(UrEngineError);
   });
+
+  it("accepts events whose object keys were reordered by storage (jsonb)", () => {
+    // Postgres jsonb canonicalizes key order (length, then bytewise) — the
+    // verifier must compare values, not serialized strings. Regression for a
+    // real online game that failed at its first capture (2026-07-09).
+    const withCaptures = [555, 777, 1234, 4242]
+      .map(playRandomGame)
+      .find((s) => s.history.some((e) => e.type === "move" && e.capture !== null));
+    if (!withCaptures) throw new Error("no seeded game produced a capture");
+    const jsonbOrder = (value: unknown): unknown => {
+      if (Array.isArray(value)) return value.map(jsonbOrder);
+      if (value === null || typeof value !== "object") return value;
+      const entries = Object.entries(value as Record<string, unknown>).sort(
+        ([a], [b]) => a.length - b.length || (a < b ? -1 : 1),
+      );
+      return Object.fromEntries(entries.map(([k, v]) => [k, jsonbOrder(v)]));
+    };
+    const reordered = withCaptures.history.map((e) => jsonbOrder(e) as (typeof withCaptures.history)[number]);
+    const rebuilt = buildStateFromEvents(withCaptures.ruleset, reordered);
+    expect(rebuilt.positions).toEqual(withCaptures.positions);
+    expect(rebuilt.winner).toBe(withCaptures.winner);
+  });
 });
 
 describe("undo", () => {

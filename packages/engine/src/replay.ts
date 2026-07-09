@@ -70,11 +70,18 @@ export function buildStateFromEvents(ruleset: RulesetConfig, events: readonly Ga
         if (applied.type !== "move") mismatch(index, "internal: applied event is not a move");
         const recorded = event;
         const actual = applied as typeof recorded;
+        // Field-by-field, never JSON.stringify: storage layers that
+        // canonicalize object key order (Postgres jsonb sorts keys) must not
+        // fail verification when the values are identical.
+        const captureMatches =
+          actual.capture === null || recorded.capture === null
+            ? actual.capture === recorded.capture
+            : actual.capture.player === recorded.capture.player && actual.capture.piece === recorded.capture.piece;
         if (
           actual.rosette !== recorded.rosette ||
           actual.extraTurn !== recorded.extraTurn ||
           actual.finished !== recorded.finished ||
-          JSON.stringify(actual.capture) !== JSON.stringify(recorded.capture)
+          !captureMatches
         ) {
           mismatch(index, "recorded move outcome differs from the rules engine's outcome");
         }

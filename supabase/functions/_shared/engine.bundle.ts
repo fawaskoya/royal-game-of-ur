@@ -499,7 +499,8 @@ function buildStateFromEvents(ruleset, events) {
         if (applied.type !== "move") mismatch(index, "internal: applied event is not a move");
         const recorded = event;
         const actual = applied;
-        if (actual.rosette !== recorded.rosette || actual.extraTurn !== recorded.extraTurn || actual.finished !== recorded.finished || JSON.stringify(actual.capture) !== JSON.stringify(recorded.capture)) {
+        const captureMatches = actual.capture === null || recorded.capture === null ? actual.capture === recorded.capture : actual.capture.player === recorded.capture.player && actual.capture.piece === recorded.capture.piece;
+        if (actual.rosette !== recorded.rosette || actual.extraTurn !== recorded.extraTurn || actual.finished !== recorded.finished || !captureMatches) {
           mismatch(index, "recorded move outcome differs from the rules engine's outcome");
         }
         break;
