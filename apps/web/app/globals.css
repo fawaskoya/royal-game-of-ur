@@ -168,6 +168,49 @@ body {
   }
 }
 
+/* Desktop menu: scale the full board into a dedicated slot (never mid-crop
+   under the mode cards). Perspective off here so paint stays inside. */
+.menu-vignette-slot {
+  position: relative;
+  z-index: 0;
+  width: 100%;
+  max-height: min(9.5rem, 18vh);
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 0.75rem;
+  flex-shrink: 0;
+}
+
+.menu-vignette-slot .vignette-tilt {
+  transform: none;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+}
+
+.menu-vignette-slot .vignette-board {
+  height: min(8.25rem, 16vh);
+  width: min(100%, calc(min(8.25rem, 16vh) * 8 / 3));
+  max-width: 100%;
+  aspect-ratio: 8 / 3;
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.45));
+}
+
+.menu-vignette-slot figcaption {
+  display: none;
+}
+
+/* Short laptops: drop vignette so cards + Begin fit without stack fight */
+@media (max-height: 760px) {
+  .menu-vignette-slot {
+    display: none !important;
+  }
+}
+
 .board-frame {
   position: relative;
   background: linear-gradient(160deg, #241c12 0%, var(--frame) 52%, #120e09 100%);
@@ -478,13 +521,14 @@ body {
    claims most of the height. Dice/roll sit in a slim footer under the board. */
 @media (max-width: 1023px) {
   .game-grid[data-layout="vertical"] {
-    grid-template-columns: minmax(3.4rem, 4.25rem) minmax(0, 1fr) minmax(3.4rem, 4.25rem);
+    grid-template-columns: minmax(3.25rem, 4rem) minmax(0, 1fr) minmax(3.25rem, 4rem);
+    /* Board shares height with dice footer; never steal from auto footer */
     grid-template-rows: minmax(0, 1fr) auto;
     grid-template-areas:
       "dark board light"
       "dice dice dice";
-    column-gap: 0.35rem;
-    row-gap: 0.45rem;
+    column-gap: 0.3rem;
+    row-gap: 0.35rem;
     align-items: stretch;
   }
 
@@ -492,19 +536,33 @@ body {
   .game-grid[data-layout="vertical"] .ga-light {
     min-height: 0;
     max-height: 100%;
+    overflow: hidden;
   }
 
   .game-grid[data-layout="vertical"] .ga-board {
     min-height: 0;
+    max-height: 100%;
+    overflow: hidden;
+    /* Leave a hair of air so the frame never paints over the dice/coach */
+    padding-bottom: 0.15rem;
   }
 
   .game-grid[data-layout="vertical"] .ga-dice {
     min-width: 0;
+    z-index: 2;
+    /* Sit above any board paint; own its height */
+    position: relative;
+    background: var(--bg);
+    padding-top: 0.1rem;
   }
 
-  /* Allow the portrait board to grow into the center column. */
+  /* Contain-fit: never taller than the board cell (cqh), never wider than cqw */
   .game-grid[data-layout="vertical"] .board-frame--fit {
-    --board-max-w: min(100cqw, 28rem);
+    --board-max-w: 100cqw;
+    max-height: 100%;
+    max-width: 100%;
+    width: min(100cqw, calc(100cqh * var(--bcols) / var(--brows)));
+    height: auto;
   }
 }
 
@@ -628,12 +686,21 @@ body {
 }
 
 /* Contain-fit: as large as possible inside the board cell while keeping the
-   grid's aspect ratio, capped so tiles never get comically large. Board.tsx
-   sets --bcols/--brows (8×3 landscape, 3×8 portrait) and --board-max-w. */
+   grid's aspect ratio. Both axes are capped so the frame never paints past
+   the grid cell into dice/coach. Board.tsx sets --bcols/--brows/--board-max-w. */
 .board-frame--fit {
   aspect-ratio: var(--bcols) / var(--brows);
-  width: min(100cqw, calc(100cqh * var(--bcols) / var(--brows)), var(--board-max-w, 56rem));
+  width: min(
+    100cqw,
+    100%,
+    calc(100cqh * var(--bcols) / var(--brows)),
+    var(--board-max-w, 56rem)
+  );
+  height: min(100cqh, 100%, calc(100cqw * var(--brows) / var(--bcols)));
+  max-width: 100%;
+  max-height: 100%;
   margin: auto;
+  box-sizing: border-box;
 }
 
 /* The header is a single row of controls — its pieces never wrap internally. */

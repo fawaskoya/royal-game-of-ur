@@ -545,10 +545,10 @@ export function GameApp() {
         </footer>
       </main>
 
-      {/* ── Desktop / tablet landscape — fit in 100dvh, no bottom clip ─── */}
-      <main className="menu-shell mx-auto hidden h-dvh max-h-dvh w-full max-w-6xl flex-col justify-center gap-5 overflow-hidden px-5 py-5 lg:flex lg:px-8 lg:py-6">
-        <section className="grid max-h-full items-center gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-start lg:gap-x-8">
-          <div className="flex flex-col gap-4 text-center lg:pt-1 lg:text-left">
+      {/* ── Desktop / tablet landscape — fit in 100dvh ─────────────────── */}
+      <main className="menu-shell mx-auto hidden h-dvh max-h-dvh w-full max-w-6xl flex-col justify-center gap-4 overflow-hidden px-5 py-5 lg:flex lg:px-8 lg:py-6">
+        <section className="grid max-h-full min-h-0 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-x-8">
+          <div className="flex min-h-0 flex-col gap-3.5 text-center lg:pt-1 lg:text-left">
             <div className="text-xs uppercase tracking-[0.35em] text-[var(--ink-dim)]">
               ✦&ensp;c. 2600 BCE · Mesopotamia&ensp;✦
             </div>
@@ -593,11 +593,12 @@ export function GameApp() {
             </footer>
           </div>
 
-          <div className="flex min-h-0 min-w-0 flex-col gap-3">
-            <div className="hidden lg:block lg:max-h-[min(160px,20vh)] lg:overflow-hidden">
+          {/* Right column: vignette fully contained, then cards — never underlap */}
+          <div className="flex min-h-0 min-w-0 flex-col gap-2.5 overflow-hidden">
+            <div className="menu-vignette-slot hidden shrink-0 lg:block">
               <MenuVignette />
             </div>
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid min-h-0 shrink-0 gap-2 sm:grid-cols-2">
               {MODE_CARDS.map((card) => (
                 <button
                   key={card.id}
@@ -630,7 +631,7 @@ export function GameApp() {
               ))}
             </div>
 
-            <div className="card flex flex-col gap-2 rounded-xl p-3">
+            <div className="card flex shrink-0 flex-col gap-2 rounded-xl p-3">
               {modeOptions(false)}
               <button className="btn btn-primary mt-0.5 rounded-lg px-5 py-2 text-sm" onClick={start}>
                 {primaryLabel === "Enter lobby" ? "Enter the lobby" : primaryLabel}

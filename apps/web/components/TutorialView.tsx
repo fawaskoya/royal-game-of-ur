@@ -128,17 +128,17 @@ export function TutorialView({ onExit }: { onExit(): void }) {
               />
             </div>
 
-            <div className="ga-dice flex min-w-0 flex-col gap-1.5">
+            <div className="ga-dice flex min-w-0 flex-col gap-1">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={tutorial.stepIndex}
                   initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
-                  className="rounded-xl border border-[var(--gold-faint)] bg-[var(--bg-raised)] px-3 py-2"
+                  className="max-h-[4.5rem] shrink-0 overflow-y-auto rounded-xl border border-[var(--gold-faint)] bg-[var(--bg-raised)] px-2.5 py-1.5 sm:max-h-none sm:px-3 sm:py-2"
                   role="status"
                 >
-                  <p className="text-xs leading-snug text-[var(--ink)] sm:text-sm sm:leading-relaxed">
+                  <p className="text-[11px] leading-snug text-[var(--ink)] sm:text-sm sm:leading-relaxed">
                     {tutorial.coach}
                   </p>
                 </motion.div>
