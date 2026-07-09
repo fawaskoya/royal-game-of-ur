@@ -12,10 +12,8 @@
  * `game_events`, governed by the RLS policies in the migration — this
  * function only ever needs to write.
  *
- * UNVERIFIED: written without a deployed Supabase project to test against
- * (no CLI session existed when this was authored). Deploy with
- * `supabase functions deploy game-move` and exercise every action once a
- * session is available; see KNOWN_ISSUES for the exact gap.
+ * Verified live 2026-07-08/09: scripted two-account game (create/join/roll/
+ * move + cross-seat and staleness rejections), then the real browser client.
  */
 import { createClient } from "npm:@supabase/supabase-js@2";
 import {
@@ -42,10 +40,20 @@ function makeRoomCode(): string {
   return code;
 }
 
+// The full header set supabase-js actually sends (it adds apikey and
+// x-client-info beyond the obvious two) — omitting any of them fails the
+// browser preflight even though server-to-server calls sail through.
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Max-Age": "86400",
+} as const;
+
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
   });
 }
 
@@ -65,13 +73,7 @@ interface GameRow {
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "authorization, content-type",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-      },
-    });
+    return new Response(null, { headers: CORS_HEADERS });
   }
   if (req.method !== "POST") return errorResponse("POST only", 405);
 
