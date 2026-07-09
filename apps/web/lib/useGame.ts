@@ -131,17 +131,28 @@ export function useGame(mode: GameMode, resume?: SavedGame): UseGameResult {
   const acting: Controller = state.winner === null ? controllerOf(mode, state.current) : "human";
   const aiTurn = state.winner === null && acting !== "human";
 
+  // Public actions act only for a HUMAN-controlled seat. The AI driver
+  // below bypasses these on purpose (it calls the session directly), so a
+  // keyboard shortcut or stray click can never roll/move on the AI's or a
+  // watched engine's behalf.
+  const humanActsNow = useCallback(() => {
+    const current = sessionRef.current!.state;
+    return current.winner === null && controllerOf(mode, current.current) === "human";
+  }, [mode]);
+
   const roll = useCallback(() => {
+    if (!humanActsNow()) return;
     if (phaseOf(sessionRef.current!.state) !== "awaiting-roll") return;
     commit((session) => session.roll());
-  }, [commit]);
+  }, [commit, humanActsNow]);
 
   const movePiece = useCallback(
     (move: Move) => {
+      if (!humanActsNow()) return;
       if (phaseOf(sessionRef.current!.state) !== "awaiting-move") return;
       commit((session) => session.move(move));
     },
-    [commit],
+    [commit, humanActsNow],
   );
 
   const undo = useCallback(() => {
@@ -229,7 +240,10 @@ export function useGame(mode: GameMode, resume?: SavedGame): UseGameResult {
     aiTurn,
     humanCanRoll: !aiTurn && phase === "awaiting-roll",
     humanCanMove: !aiTurn && phase === "awaiting-move",
-    canUndo: mode.kind !== "watch" && state.history.length > 0 && !aiTurn,
+    // No undo in watch mode, while the AI is thinking, or after the game is
+    // decided — rewinding a finished game would contradict the already-
+    // recorded result and archived replay.
+    canUndo: mode.kind !== "watch" && state.history.length > 0 && !aiTurn && state.winner === null,
     restored: restoredRef.current,
     startedAt: metaRef.current.startedAt,
     gameId: metaRef.current.gameId,

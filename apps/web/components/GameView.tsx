@@ -154,7 +154,7 @@ export function GameView({
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const key = e.key.toLowerCase();
-      if (key === "r") game.roll();
+      if (key === "r" && game.humanCanRoll) game.roll();
       else if (key === "h") requestHint();
       else if (key === "u" && game.canUndo) game.undo();
       else if (key === "n") requestNewGame();
@@ -220,9 +220,11 @@ export function GameView({
                 <span className="layout-toggle-label">{layout === "vertical" ? " Horizontal" : " Vertical"}</span>
               </button>
             )}
-            <button className="btn rounded-lg px-3 py-1.5 text-sm" disabled={!game.canUndo} onClick={game.undo}>
-              Undo
-            </button>
+            {mode.kind === "watch" ? null : (
+              <button className="btn rounded-lg px-3 py-1.5 text-sm" disabled={!game.canUndo} onClick={game.undo}>
+                Undo
+              </button>
+            )}
             <button className="btn rounded-lg px-3 py-1.5 text-sm" onClick={requestNewGame}>
               New
             </button>
@@ -380,10 +382,11 @@ export function GameView({
                 transition={{ type: "spring", stiffness: 300, damping: 26 }}
                 className="board-frame w-full max-w-sm rounded-2xl p-7 text-center"
               >
-                <div className="font-display text-3xl text-[var(--gold)]">
+                <div className="font-display gold-text text-3xl">
                   {state.winner === 0 ? "Light" : "Dark"} wins
                 </div>
-                <div className="mt-1.5 text-sm text-[var(--ink-dim)]">
+                <div className="ornament-rule mx-auto mt-3 max-w-[220px] text-[10px]">✦</div>
+                <div className="mt-3 text-sm text-[var(--ink-dim)]">
                   {controllerOf(mode, state.winner) === "human" ? "A worthy victory." : "The machine prevails — this time."}
                 </div>
 
