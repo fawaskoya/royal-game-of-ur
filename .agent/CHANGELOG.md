@@ -1,6 +1,39 @@
 # Changelog
 
-## [Unreleased] — 2026-07-06 experience + multiplayer wave
+## [Unreleased] — 2026-07-09 online-in-the-UI + grand redesign
+
+### Added
+- **Internet rooms are now playable from the app** (`useOnlineRoom`, `OnlineRoomView`
+  online/same-device flows sharing one `RoomGameScreen`): create/join by code against the
+  live Supabase backend, guest identity via anonymous auth, seq-slotted event ingestion with
+  gap-triggered `resync()`, inline transport errors, one-in-flight action guard. Verified in
+  the real UI: browser hosted room DEWN, a separate-account scripted guest joined and both
+  sides' moves synced live over Realtime (migration `0003`: tables added to the
+  `supabase_realtime` publication — without it postgres_changes never fires).
+- **Homepage redesign**: split hero with gold-leaf display title, kicker ornaments, colossal
+  rosette watermark, and a **living vignette** — a real engine session playing itself in slow
+  motion on a display-tilted board (reduced-motion: advances silently to a still tableau);
+  2×2 engraved-icon mode cards (die/discs/globe/eye) with an "online" chip; contextual config
+  card; ornament-rule footer.
+- **Material upgrade**: plaque tiles (corner studs + engraved double inlay ring), gold inlay
+  line inside the board frame, ambient gold glow, "dice pit" tray (suede variant in parchment
+  theme), embossed primary buttons, `.card`/`.gold-text`/`.ornament-rule` design tokens.
+- Win overlay: gold-leaf title + engraved rule.
+
+### Fixed
+- **Logic flaws**: undo no longer possible after the game is decided (it contradicted the
+  recorded result/archive — the win-screen `U` key was a live exploit); the `R` key can no
+  longer roll for the AI or in watch mode (public `roll`/`movePiece` now refuse non-human
+  actors outright); the Undo button is hidden (not just disabled) in watch mode.
+- **Edge Function CORS**: preflight only allowed `authorization, content-type`, but
+  supabase-js also sends `apikey` + `x-client-info` — browsers failed the preflight entirely
+  (server-to-server calls had masked it). Now the standard four + `Access-Control-Max-Age`.
+- **Cold starts**: one automatic retry (1.2s) on 5xx/fetch-level failures in the transport;
+  staleness checks server-side make duplicates harmless. Friendly "server waking up" message.
+- Parchment theme: `.btn` was night-wood with theme-flipped ink (dark-on-dark labels);
+  buttons are aged paper in light theme, `btn-primary` stays gold in both.
+
+## [2026-07-06] experience + multiplayer wave
 
 ### Added
 - **Post-game analysis**: every real decision graded by the hint engine's search

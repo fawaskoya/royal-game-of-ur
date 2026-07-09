@@ -61,12 +61,19 @@ and a stale/replayed request were both correctly rejected). One real bug caught 
 that test: `game_secrets.seed`/`rng_state` were `int4` but a uint32 random seed can exceed its
 signed range — widened to `bigint` (migration `0002`).
 
+**2026-07-09 — online rooms are live in the app itself.** `useOnlineRoom` +
+`OnlineRoomView`'s online/same-device flows (one shared `RoomGameScreen`); guest identity via
+anonymous auth; verified in the real browser UI against a separate-account guest
+(bidirectional Realtime sync). Fixed en route: Edge Function CORS (preflight now allows
+supabase-js's full header set), `supabase_realtime` publication membership (migration
+`0003`), one-retry cold-start handling.
+
 Remaining:
-1. Wire `SupabaseRoomTransport` into an online-aware version of the room UI (today
-   `OnlineRoomView` only uses the local transport) and swap based on `isOnlineConfigured()`.
+1. Record online results into local stats/archive + a rematch flow (AG-14).
 2. Server `MatchResult`s → Elo ranked pool → real leaderboards (the local Elo module is the
    same math; `docs/LEADERBOARDS_AND_STATS.md`).
-3. Beta with invite codes → open.
+3. Accounts beyond guest (Google/Apple) when leaderboards demand identity.
+4. Beta with invite codes → open.
 
 ## Phase L3 — App stores (v1.2)
 

@@ -42,9 +42,15 @@ function deployed, anonymous auth enabled. A scripted test with two real anonymo
 create room, join by code, roll, move, read the event log back via RLS, plus negative tests
 for a cross-seat move and a stale/replayed request — passed in full. One real bug found and
 fixed: `game_secrets.seed`/`rng_state` were `int4`, which a uint32 crypto-random seed can
-exceed; widened to `bigint` (migration `0002_secrets_bigint.sql`). Remaining: wire
-`SupabaseRoomTransport` into the room UI in place of the local-only transport
-(`docs/GO_LIVE_PLAN.md` Phase L2).
+exceed; widened to `bigint` (migration `0002_secrets_bigint.sql`). **2026-07-09 — wired and browser-verified.** `useOnlineRoom` consumes the transport
+(seq-slotted ingestion, gap-triggered resync, one-in-flight action guard) and
+`OnlineRoomView` offers both wires — internet rooms by default, same-device rooms as the
+fallback/offline option — through one shared `RoomGameScreen`. Live test: browser hosted
+room DEWN, a separate-account scripted guest joined, both sides' rolls/moves synced in
+real time. The launch blockers found: CORS preflight (supabase-js sends `apikey` +
+`x-client-info`, which the function's allow-list omitted) and Realtime publication
+membership (`games`/`game_events` had to be added to `supabase_realtime` — migration
+`0003`).
 
 ## Backend evaluation
 
