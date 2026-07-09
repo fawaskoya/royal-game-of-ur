@@ -11,7 +11,7 @@ All notable product changes. Format loosely follows [Keep a Changelog](https://k
 
 ### Changed
 
-- **Mobile homepage readability** — larger title, mode titles (~16px), blurbs (13px), primary CTA, and footer chips; taller accordion hit targets; still one-screen with scroll fallback on short devices.
+- **Mobile homepage** — snug single-screen accordion (no page scroll): only one mode open at a time; closed rows share remaining height; expanded panel + footer stay in view. Readable type without overflow.
 - Support / tips UI remains **hidden** until custom domain + India-friendly checkout.
 
 ## [0.2.0] — 2026-07-10
