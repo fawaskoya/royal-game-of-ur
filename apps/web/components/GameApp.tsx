@@ -545,14 +545,14 @@ export function GameApp() {
         </footer>
       </main>
 
-      {/* ── Desktop / tablet landscape ─────────────────────────────────── */}
-      <main className="menu-shell mx-auto hidden min-h-dvh w-full max-w-6xl flex-col justify-center gap-8 px-5 py-10 lg:flex lg:py-8 lg:px-8">
-        <section className="grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-start lg:gap-x-10">
-          <div className="flex flex-col gap-5 text-center lg:pt-2 lg:text-left">
+      {/* ── Desktop / tablet landscape — fit in 100dvh, no bottom clip ─── */}
+      <main className="menu-shell mx-auto hidden h-dvh max-h-dvh w-full max-w-6xl flex-col justify-center gap-5 overflow-hidden px-5 py-5 lg:flex lg:px-8 lg:py-6">
+        <section className="grid max-h-full items-center gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-start lg:gap-x-8">
+          <div className="flex flex-col gap-4 text-center lg:pt-1 lg:text-left">
             <div className="text-xs uppercase tracking-[0.35em] text-[var(--ink-dim)]">
               ✦&ensp;c. 2600 BCE · Mesopotamia&ensp;✦
             </div>
-            <h1 className="font-display gold-text text-4xl leading-tight sm:text-5xl lg:text-6xl">
+            <h1 className="font-display gold-text text-4xl leading-tight sm:text-5xl lg:text-5xl xl:text-6xl">
               Royal Game
               <br />
               of Ur
@@ -565,7 +565,7 @@ export function GameApp() {
 
             {saved ? (
               <button
-                className="card card--gilded group w-full rounded-xl px-4 py-3 text-left"
+                className="card card--gilded group w-full rounded-xl px-4 py-2.5 text-left"
                 onClick={continueGame}
               >
                 <div className="flex items-center justify-between gap-3">
@@ -585,7 +585,7 @@ export function GameApp() {
               </button>
             ) : null}
 
-            <div className="ornament-rule mt-1 hidden text-xs lg:flex">✦</div>
+            <div className="ornament-rule mt-0.5 hidden text-xs lg:flex">✦</div>
             <div className="hidden flex-wrap gap-2 lg:flex">{secondaryLinks(false)}</div>
             {importError ? <p className="hidden text-xs text-[var(--danger)] lg:block">{importError}</p> : null}
             <footer className="hidden text-xs text-[var(--ink-dim)] lg:block">
@@ -593,16 +593,16 @@ export function GameApp() {
             </footer>
           </div>
 
-          <div className="flex min-w-0 flex-col gap-4">
-            <div className="hidden lg:block lg:max-h-[min(220px,28vh)] lg:overflow-hidden">
+          <div className="flex min-h-0 min-w-0 flex-col gap-3">
+            <div className="hidden lg:block lg:max-h-[min(160px,20vh)] lg:overflow-hidden">
               <MenuVignette />
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-2 sm:grid-cols-2">
               {MODE_CARDS.map((card) => (
                 <button
                   key={card.id}
                   className={[
-                    "card btn w-full rounded-xl px-4 py-3.5 text-left",
+                    "card btn w-full rounded-xl px-3.5 py-2.5 text-left",
                     choice === card.id ? "ring-1 ring-[var(--gold)]" : "",
                     firstRun && card.id === "tutorial" && choice === "tutorial" ? "card--gilded" : "",
                   ].join(" ")}
@@ -630,9 +630,9 @@ export function GameApp() {
               ))}
             </div>
 
-            <div className="card flex flex-col gap-3 rounded-xl p-4">
+            <div className="card flex flex-col gap-2 rounded-xl p-3">
               {modeOptions(false)}
-              <button className="btn btn-primary mt-1 rounded-lg px-5 py-2.5" onClick={start}>
+              <button className="btn btn-primary mt-0.5 rounded-lg px-5 py-2 text-sm" onClick={start}>
                 {primaryLabel === "Enter lobby" ? "Enter the lobby" : primaryLabel}
               </button>
             </div>

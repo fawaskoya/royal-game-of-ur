@@ -12,6 +12,7 @@ All notable product changes. Format loosely follows [Keep a Changelog](https://k
 ### Changed
 
 - **Mobile homepage** — snug single-screen accordion (no page scroll): only one mode open at a time; closed rows share remaining height; expanded panel + footer stay in view. Readable type without overflow.
+- **Desktop homepage** — `h-dvh` shell, tighter gaps/padding, smaller vignette so Begin is not clipped on laptop heights.
 - Support / tips UI remains **hidden** until custom domain + India-friendly checkout.
 
 ## [0.2.0] — 2026-07-10
