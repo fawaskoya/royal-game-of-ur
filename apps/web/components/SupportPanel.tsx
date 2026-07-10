@@ -11,12 +11,14 @@ const AMOUNTS = [
 ] as const;
 
 /**
- * Optional tips via Stripe. Prefers a Dashboard Payment Link
- * (`NEXT_PUBLIC_STRIPE_DONATE_URL`); falls back to Checkout sessions when
- * `STRIPE_SECRET_KEY` is configured on the server.
+ * Optional tips via Dodo Payments (Merchant of Record — works for
+ * individuals in India). Prefers a Dashboard Payment Link
+ * (`NEXT_PUBLIC_DONATE_URL`, fixed amount); falls back to a checkout session
+ * via /api/donate when `DODO_PAYMENTS_API_KEY` is configured on the server
+ * (variable tip amounts, since a payment link alone is fixed-price).
  */
 export function SupportPanel({ open, onClose }: { open: boolean; onClose(): void }) {
-  const paymentLink = process.env.NEXT_PUBLIC_STRIPE_DONATE_URL?.trim() || "";
+  const paymentLink = process.env.NEXT_PUBLIC_DONATE_URL?.trim() || "";
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,7 +43,7 @@ export function SupportPanel({ open, onClose }: { open: boolean; onClose(): void
       setError(
         e instanceof Error
           ? e.message
-          : "Set NEXT_PUBLIC_STRIPE_DONATE_URL or STRIPE_SECRET_KEY to enable tips.",
+          : "Set NEXT_PUBLIC_DONATE_URL or DODO_PAYMENTS_API_KEY to enable tips.",
       );
     } finally {
       setBusy(false);
@@ -81,12 +83,12 @@ export function SupportPanel({ open, onClose }: { open: boolean; onClose(): void
 
       {paymentLink ? (
         <p className="mt-3 text-xs text-[var(--ink-dim)]">
-          Secure checkout via Stripe. You&apos;ll leave the game briefly, then can return anytime.
+          Secure checkout via Dodo Payments. You&apos;ll leave the game briefly, then can return anytime.
         </p>
       ) : (
         <p className="mt-3 text-xs text-[var(--ink-dim)]">
-          Tips open once a Stripe Payment Link is set (
-          <code className="text-[var(--gold)]">NEXT_PUBLIC_STRIPE_DONATE_URL</code>
+          Tips open once Dodo Payments is configured (
+          <code className="text-[var(--gold)]">DODO_PAYMENTS_API_KEY</code>
           ). Cosmetics (board &amp; dice skins) are planned next — never affect fair play.
         </p>
       )}

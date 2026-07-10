@@ -13,6 +13,7 @@ import { TutorialView } from "./TutorialView";
 import { SettingsPanel } from "./SettingsPanel";
 import { StatsPanel } from "./StatsPanel";
 import { LeaderboardPanel } from "./LeaderboardPanel";
+import { SupportPanel } from "./SupportPanel";
 import { ReplayViewer } from "./ReplayViewer";
 import { ArchivePanel } from "./ArchivePanel";
 import { OnlineRoomView } from "./OnlineRoomView";
@@ -158,6 +159,11 @@ function DifficultySelect({
   );
 }
 
+/** Support/donate button stays hidden until a payment link or Dodo checkout is
+ *  actually wired up — a broken/no-op button in the menu would look worse
+ *  than no button at all. */
+const donationsEnabled = Boolean(process.env.NEXT_PUBLIC_DONATE_URL?.trim() || process.env.NEXT_PUBLIC_DONATIONS_ENABLED);
+
 export function GameApp() {
   const [mode, setMode] = useState<GameMode | null>(null);
   const [choice, setChoice] = useState<MenuChoice>("ai");
@@ -171,6 +177,7 @@ export function GameApp() {
   const [confirmBegin, setConfirmBegin] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
   const [boardOpen, setBoardOpen] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [tutorialActive, setTutorialActive] = useState(false);
@@ -383,6 +390,11 @@ export function GameApp() {
       <button className={["btn rounded-lg text-sm", compact ? "min-h-8 px-2.5 py-1" : "px-4 py-1.5"].join(" ")} onClick={() => fileInputRef.current?.click()}>
         Import
       </button>
+      {donationsEnabled ? (
+        <button className={["btn rounded-lg text-sm", compact ? "min-h-8 px-2.5 py-1" : "px-4 py-1.5"].join(" ")} onClick={() => setSupportOpen(true)}>
+          Support ♡
+        </button>
+      ) : null}
     </>
   );
 
@@ -390,6 +402,7 @@ export function GameApp() {
     <>
       <StatsPanel open={statsOpen} onClose={() => setStatsOpen(false)} />
       <LeaderboardPanel open={boardOpen} onClose={() => setBoardOpen(false)} />
+      <SupportPanel open={supportOpen} onClose={() => setSupportOpen(false)} />
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <ArchivePanel open={archiveOpen} onClose={() => setArchiveOpen(false)} />
       <HowToPlay
