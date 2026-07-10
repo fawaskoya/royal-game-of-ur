@@ -21,6 +21,7 @@ import { MenuVignette } from "./MenuVignette";
 import { loadTutorialProgress } from "@/lib/useTutorial";
 import { loadResults } from "@/lib/stats/matchResults";
 import { isOnlineConfigured } from "@/lib/multiplayer/supabaseClient";
+import { prewarmAuth } from "@/lib/multiplayer/auth";
 
 type MenuChoice = "ai" | "pvp" | "watch" | "room" | "tutorial" | "match";
 
@@ -492,7 +493,13 @@ export function GameApp() {
                     "btn flex w-full items-center gap-2.5 rounded-none px-3 text-left",
                     open ? "shrink-0 py-2" : "min-h-0 flex-1 py-1.5",
                   ].join(" ")}
-                  onClick={() => setChoice(card.id)}
+                  onPointerEnter={() => {
+                    if (card.id === "match" && isOnlineConfigured()) prewarmAuth();
+                  }}
+                  onClick={() => {
+                    setChoice(card.id);
+                    if (card.id === "match" && isOnlineConfigured()) prewarmAuth();
+                  }}
                   aria-expanded={open}
                 >
                   <span className="shrink-0 opacity-90">{card.icon()}</span>
@@ -607,7 +614,13 @@ export function GameApp() {
                     choice === card.id ? "ring-1 ring-[var(--gold)]" : "",
                     firstRun && card.id === "tutorial" && choice === "tutorial" ? "card--gilded" : "",
                   ].join(" ")}
-                  onClick={() => setChoice(card.id)}
+                  onPointerEnter={() => {
+                    if (card.id === "match" && isOnlineConfigured()) prewarmAuth();
+                  }}
+                  onClick={() => {
+                    setChoice(card.id);
+                    if (card.id === "match" && isOnlineConfigured()) prewarmAuth();
+                  }}
                   aria-pressed={choice === card.id}
                 >
                   <div className="flex items-start gap-3">

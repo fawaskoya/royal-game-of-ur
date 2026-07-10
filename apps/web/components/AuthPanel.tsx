@@ -17,9 +17,13 @@ import { saveHandle, HANDLE_MAX, HANDLE_MIN } from "@/lib/multiplayer/onlineIden
 export function AuthPanel({
   auth,
   onAuthChange,
+  loading = false,
 }: {
   auth: AuthSnapshot;
   onAuthChange(next: AuthSnapshot): void;
+  /** True while the first snapshot is still resolving — shows "Connecting…"
+   *  rather than the alarming "Not connected" during normal startup. */
+  loading?: boolean;
 }) {
   const [mode, setMode] = useState<"idle" | "signin" | "signup" | "rename">("idle");
   const [email, setEmail] = useState("");
@@ -63,7 +67,7 @@ export function AuthPanel({
               </span>
             </div>
           ) : (
-            <div className="mt-1 text-[var(--ink-dim)]">Not connected</div>
+            <div className="mt-1 text-[var(--ink-dim)]">{loading ? "Connecting…" : "Not connected"}</div>
           )}
           {identity?.rating != null ? (
             <div className="mt-0.5 text-xs text-[var(--ink-dim)]">

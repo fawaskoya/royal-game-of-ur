@@ -17,7 +17,7 @@ The definitive digital version of the world's oldest playable board game (c. 260
 | Global casual matchmaking + email/anonymous accounts | ✅ |
 | Server Elo leaderboard (W–L, win%, last active) | ✅ |
 | Interactive tutorial (to bear-off) | ✅ |
-| Compact mobile homepage (readable type scale) | ✅ |
+| Homepage with self-playing attract board; viewport-fit desktop + mobile | ✅ |
 | Custom domain + donations | 📋 after domain (Support UI hidden) |
 | Cosmetics (boards / dice) | 📋 planned — [docs/MONETIZATION.md](docs/MONETIZATION.md) |
 

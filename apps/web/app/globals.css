@@ -174,7 +174,7 @@ body {
   position: relative;
   z-index: 0;
   width: 100%;
-  max-height: min(9.5rem, 18vh);
+  max-height: min(12.5rem, 22vh);
   overflow: hidden;
   isolation: isolate;
   border-radius: 0.75rem;
@@ -193,19 +193,24 @@ body {
 }
 
 .menu-vignette-slot .vignette-board {
-  height: min(8.25rem, 16vh);
-  width: min(100%, calc(min(8.25rem, 16vh) * 8 / 3));
+  height: min(11rem, 20vh);
+  width: min(100%, calc(min(11rem, 20vh) * 8 / 3));
   max-width: 100%;
   aspect-ratio: 8 / 3;
-  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.45));
+  /* Layered shadow + faint gold rim reads as a lit museum piece, not a flat
+     thumbnail — the "appearance quality" lift at this display size. */
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.55)) drop-shadow(0 16px 30px rgba(0, 0, 0, 0.5))
+    drop-shadow(0 0 14px rgba(201, 162, 75, 0.14));
 }
 
 .menu-vignette-slot figcaption {
   display: none;
 }
 
-/* Short laptops: drop vignette so cards + Begin fit without stack fight */
-@media (max-height: 760px) {
+/* Only genuinely short viewports (landscape phones/tablets) drop the vignette
+   so the mode cards + Begin never fight for space. Above this the vh-scaling
+   above keeps the board small enough to coexist. */
+@media (max-height: 600px) {
   .menu-vignette-slot {
     display: none !important;
   }
@@ -556,14 +561,6 @@ body {
     padding-top: 0.1rem;
   }
 
-  /* Contain-fit: never taller than the board cell (cqh), never wider than cqw */
-  .game-grid[data-layout="vertical"] .board-frame--fit {
-    --board-max-w: 100cqw;
-    max-height: 100%;
-    max-width: 100%;
-    width: min(100cqw, calc(100cqh * var(--bcols) / var(--brows)));
-    height: auto;
-  }
 }
 
 .ga-dark {
@@ -686,17 +683,21 @@ body {
 }
 
 /* Contain-fit: as large as possible inside the board cell while keeping the
-   grid's aspect ratio. Both axes are capped so the frame never paints past
-   the grid cell into dice/coach. Board.tsx sets --bcols/--brows/--board-max-w. */
+   grid's aspect ratio. HEIGHT is the single driver and WIDTH derives from
+   aspect-ratio, so the two axes can never disagree by a subpixel and round
+   into a 1–2px overflow that `overflow:hidden` on .ga-board then clips (that
+   was the mobile bottom-row clip). Every height term keeps the box inside the
+   container on BOTH axes; the container-query units come from .ga-board /
+   .vignette-board (both container-type:size). Board.tsx sets --bcols/--brows/
+   --board-max-w. */
 .board-frame--fit {
   aspect-ratio: var(--bcols) / var(--brows);
-  width: min(
-    100cqw,
-    100%,
-    calc(100cqh * var(--bcols) / var(--brows)),
-    var(--board-max-w, 56rem)
+  height: min(
+    100cqh,
+    calc(100cqw * var(--brows) / var(--bcols)),
+    calc(var(--board-max-w, 56rem) * var(--brows) / var(--bcols))
   );
-  height: min(100cqh, 100%, calc(100cqw * var(--brows) / var(--bcols)));
+  width: auto;
   max-width: 100%;
   max-height: 100%;
   margin: auto;

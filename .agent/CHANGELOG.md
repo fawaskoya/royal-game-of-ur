@@ -1,5 +1,32 @@
 # Changelog
 
+## [Unreleased] — 2026-07-10 homepage attract board + snappy account
+
+### Fixed
+- **Homepage animated board was hidden on many desktops.** The self-playing vignette was
+  dropped by a `@media (max-height: 760px)` rule that fired on ordinary laptops with plenty
+  of slack. Lowered the threshold to 600px (only genuinely short landscape viewports) and
+  leaned on the existing `vh`-scaling so the board coexists with the mode cards without
+  scroll. Also enlarged it a touch (slot 22vh / board 20vh) and gave it a layered
+  shadow + faint gold rim so it reads as a lit museum piece, not a flat thumbnail.
+- **Attract board now plays from the first frame.** `MenuVignette` used to sit on an empty
+  board for ~1.5 s before its first move. The initial state is now pre-advanced through a
+  fixed 22-step opening — seeded session + seeded move picks, so server and client render the
+  identical mid-game tableau (no hydration mismatch) and the board is alive the instant the
+  page paints; live play continues from there.
+- **Board tiles overflowed the frame on mobile (game + tutorial).** `.board-frame--fit` set
+  `aspect-ratio` plus explicit `width` and `height`; with both dimensions pinned the browser
+  ignores `aspect-ratio`, and a subpixel disagreement between the two `min()` expressions made
+  the frame a hair too tall — `overflow:hidden` on `.ga-board` then clipped the bottom row.
+  Rewrote it single-axis (height drives, width derives from aspect-ratio) so the axes can
+  never disagree; removed the now-redundant mobile override.
+- **"Not connected" flash on Find a match.** The account strip showed "Not connected" for a
+  couple seconds while the anonymous session + `whoami` (with cold start) resolved. Added an
+  in-memory snapshot cache with in-flight dedupe, optimistic `localStorage` (returning players
+  see their handle on first paint, revalidated in the background), `prewarmAuth()` fired on
+  hover/select of the Find-a-match card so the fetch overlaps intent, and a "Connecting…"
+  label for the genuine cold first open. Cache + storage cleared on sign-out.
+
 ## [Unreleased] — 2026-07-09/10 real leaderboard + identity + rematch
 
 ### Added

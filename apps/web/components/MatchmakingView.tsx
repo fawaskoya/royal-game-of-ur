@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getAuthSnapshot, type AuthSnapshot } from "@/lib/multiplayer/auth";
+import { getAuthSnapshot, getCachedSnapshot, type AuthSnapshot } from "@/lib/multiplayer/auth";
 import { cancelMatch, enqueueMatch, pollMatch } from "@/lib/multiplayer/matchmaking";
 import { useOnlineRoom } from "@/lib/multiplayer/useOnlineRoom";
 import { isOnlineConfigured } from "@/lib/multiplayer/supabaseClient";
@@ -15,7 +15,10 @@ import { RoomGameScreen } from "./RoomGameScreen";
 export function MatchmakingView({ onExit }: { onExit(): void }) {
   const online = isOnlineConfigured();
   const room = useOnlineRoom();
-  const [auth, setAuth] = useState<AuthSnapshot>({ user: null, identity: null });
+  // Start from any warm/optimistic snapshot so the account strip shows the
+  // player instantly instead of flashing "Not connected".
+  const [auth, setAuth] = useState<AuthSnapshot>(() => getCachedSnapshot() ?? { user: null, identity: null });
+  const [authLoading, setAuthLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [waitSec, setWaitSec] = useState(0);
   const [rating, setRating] = useState<number | null>(null);
@@ -32,7 +35,10 @@ export function MatchmakingView({ onExit }: { onExit(): void }) {
   }, []);
 
   useEffect(() => {
-    if (!online) return;
+    if (!online) {
+      setAuthLoading(false);
+      return;
+    }
     let cancelled = false;
     getAuthSnapshot()
       .then((snap) => {
@@ -41,7 +47,10 @@ export function MatchmakingView({ onExit }: { onExit(): void }) {
         preRatingRef.current = snap.identity?.rating ?? null;
         setRating(snap.identity?.rating ?? null);
       })
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setAuthLoading(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -202,7 +211,7 @@ export function MatchmakingView({ onExit }: { onExit(): void }) {
         </p>
       </header>
 
-      <AuthPanel auth={auth} onAuthChange={setAuth} />
+      <AuthPanel auth={auth} onAuthChange={setAuth} loading={authLoading} />
 
       {searching ? (
         <div className="card flex flex-col items-center gap-4 rounded-xl p-6 text-center">
