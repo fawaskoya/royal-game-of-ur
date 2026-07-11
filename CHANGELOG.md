@@ -4,7 +4,7 @@ All notable product changes. Format loosely follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
-- Custom domain + public donations (Support UI hidden until domain and India-friendly checkout, e.g. Dodo Payments).
+- **Donate on homepage** — soft nudge + **Donate** button (mobile + desktop); panel opens Dodo short link `https://dodo.pe/support-ur`; thank-you line after `?donated=1`.
 - Cosmetic board/dice skins (see [docs/MONETIZATION.md](docs/MONETIZATION.md)).
 
 ## [0.2.2] — 2026-07-10

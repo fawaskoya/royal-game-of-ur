@@ -18,7 +18,7 @@ The definitive digital version of the world's oldest playable board game (c. 260
 | Server Elo leaderboard (W–L, win%, last active) | ✅ |
 | Interactive tutorial (to bear-off) | ✅ |
 | Homepage with self-playing attract board; viewport-fit desktop + mobile | ✅ |
-| Custom domain + donations | 📋 after domain (Support UI hidden) |
+| Custom domain + donations | ✅ Donate on homepage → Dodo (`dodo.pe/support-ur`) |
 | Cosmetics (boards / dice) | 📋 planned — [docs/MONETIZATION.md](docs/MONETIZATION.md) |
 
 ## Quickstart
@@ -81,7 +81,7 @@ docs/              Specs, architecture, UI, roadmap, ADRs.
 | [MATCHMAKING.md](docs/MATCHMAKING.md) | Casual pool + accounts |
 | [ONLINE_ARCHITECTURE.md](docs/ONLINE_ARCHITECTURE.md) | Server-authoritative multiplayer |
 | [LEADERBOARDS_AND_STATS.md](docs/LEADERBOARDS_AND_STATS.md) | Ladder + local stats |
-| [MONETIZATION.md](docs/MONETIZATION.md) | Tips later (India-friendly MoR) + cosmetics |
+| [MONETIZATION.md](docs/MONETIZATION.md) | Donate (Dodo) + future cosmetics |
 | [GO_LIVE_PLAN.md](docs/GO_LIVE_PLAN.md) | Web → stores sequencing |
 | [ROADMAP.md](docs/ROADMAP.md) · [TASKS.md](docs/TASKS.md) | Phases and backlog |
 | [docs/adr/](docs/adr/) | Architectural decisions |

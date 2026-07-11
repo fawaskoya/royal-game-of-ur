@@ -2,17 +2,20 @@
 
 Core play stays free: no ads, no pay-to-win, server dice and Elo stay fair for everyone.
 
-## Status (2026-07-10)
+## Status (2026-07-11)
 
 - Custom domain (`royalgameofur.app`) is live.
-- **Dodo Payments** selected as the Merchant of Record (works for individuals in India; Stripe/Buy Me a Coffee do not). Account created; business verification in progress.
-- `apps/web/app/api/donate/route.ts` calls Dodo's Checkout Sessions API (`POST /checkouts`) directly — no SDK dependency, matching the rest of the app's style. Dodo requires an existing **Product** (no ad-hoc/inline pricing); the plan is **one "Pay what you want" product** so a single `product_id` serves all tip amounts (the Support panel's Tea/Offering/Patron/Custom buttons each pass a different `amount`).
-- The **Support ♡** menu button stays hidden until either env below is set — a broken button is worse than no button:
-  - `DODO_PAYMENTS_API_KEY` + `DODO_PAYMENTS_PRODUCT_ID` (+ `DODO_PAYMENTS_MODE=live` when ready — defaults to `test`), **or**
-  - `NEXT_PUBLIC_DONATE_URL` if a static Dashboard Payment Link is preferred instead (fixed amount, no backend call).
-- Remaining steps once verification clears: create the PWYW product in the Dodo dashboard, add the two/three env vars to Vercel, flip mode to `live`.
+- **Dodo Payments** KYC approved; live tips enabled.
+- **Homepage Donate**: soft nudge + **Donate** button opens panel → Dodo short link
+  `https://dodo.pe/support-ur` (override with `NEXT_PUBLIC_DONATE_URL`).
+- Product: one-time PWYW “Support the game” — product id `pdt_0NiwDp1XRBfPhen9b4102`.
+- Full checkout URL (with return `/?donated=1`): see `apps/web/lib/donate.ts`.
+- Return from Dodo shows a brief thank-you line on the homepage.
+- Optional later: Checkout Sessions API (`DODO_PAYMENTS_API_KEY` + `DODO_PAYMENTS_PRODUCT_ID` +
+  `DODO_PAYMENTS_MODE=live`) for in-app Tea/Offering/Patron amounts without leaving to a fixed link.
 
-Code: `apps/web/components/SupportPanel.tsx`, `apps/web/app/api/donate/route.ts`.
+Code: `apps/web/lib/donate.ts`, `apps/web/components/SupportPanel.tsx`, `apps/web/components/GameApp.tsx`,
+`apps/web/app/api/donate/route.ts`.
 
 ## Later — cosmetics (not power)
 

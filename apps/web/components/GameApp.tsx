@@ -23,6 +23,7 @@ import { loadTutorialProgress } from "@/lib/useTutorial";
 import { loadResults } from "@/lib/stats/matchResults";
 import { isOnlineConfigured } from "@/lib/multiplayer/supabaseClient";
 import { prewarmAuth } from "@/lib/multiplayer/auth";
+import { isDonateEnabled } from "@/lib/donate";
 
 type MenuChoice = "ai" | "pvp" | "watch" | "room" | "tutorial" | "match";
 
@@ -159,10 +160,8 @@ function DifficultySelect({
   );
 }
 
-/** Support/donate button stays hidden until a payment link or Dodo checkout is
- *  actually wired up — a broken/no-op button in the menu would look worse
- *  than no button at all. */
-const donationsEnabled = Boolean(process.env.NEXT_PUBLIC_DONATE_URL?.trim() || process.env.NEXT_PUBLIC_DONATIONS_ENABLED);
+/** Donate is on when a public payment link is available (default short link baked in). */
+const donationsEnabled = isDonateEnabled();
 
 export function GameApp() {
   const [mode, setMode] = useState<GameMode | null>(null);
@@ -187,6 +186,7 @@ export function GameApp() {
   const [firstRun, setFirstRun] = useState(false);
   const [importedReplay, setImportedReplay] = useState<Replay | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
+  const [donateThanks, setDonateThanks] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -203,6 +203,19 @@ export function GameApp() {
     const timer = setTimeout(() => setImportError(null), 4000);
     return () => clearTimeout(timer);
   }, [importError]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("donated") !== "1") return;
+    setDonateThanks(true);
+    params.delete("donated");
+    const q = params.toString();
+    const next = `${window.location.pathname}${q ? `?${q}` : ""}${window.location.hash}`;
+    window.history.replaceState({}, "", next);
+    const timer = setTimeout(() => setDonateThanks(false), 6000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleReplayFile = async (file: File) => {
     setImportError(null);
@@ -361,6 +374,32 @@ export function GameApp() {
     </>
   );
 
+  const donateNudge = (compact: boolean) =>
+    donationsEnabled ? (
+      <div
+        className={[
+          "flex items-center gap-2 rounded-lg border border-[var(--gold-faint)] bg-[var(--bg-raised)]/60",
+          compact ? "px-2.5 py-1.5" : "px-3 py-2",
+        ].join(" ")}
+      >
+        <p className={["min-w-0 flex-1 leading-snug text-[var(--ink-dim)]", compact ? "text-[11px]" : "text-xs"].join(" ")}>
+          {donateThanks
+            ? "Thank you — your kindness keeps this ancient race alive."
+            : "Enjoying the race? A tip is always welcome, never required."}
+        </p>
+        <button
+          type="button"
+          className={[
+            "btn shrink-0 rounded-lg text-[var(--gold)] ring-1 ring-[var(--gold-soft)]",
+            compact ? "min-h-8 px-2.5 py-1 text-xs" : "px-3 py-1.5 text-sm",
+          ].join(" ")}
+          onClick={() => setSupportOpen(true)}
+        >
+          Donate
+        </button>
+      </div>
+    ) : null;
+
   const secondaryLinks = (compact: boolean) => (
     <>
       <button
@@ -390,11 +429,6 @@ export function GameApp() {
       <button className={["btn rounded-lg text-sm", compact ? "min-h-8 px-2.5 py-1" : "px-4 py-1.5"].join(" ")} onClick={() => fileInputRef.current?.click()}>
         Import
       </button>
-      {donationsEnabled ? (
-        <button className={["btn rounded-lg text-sm", compact ? "min-h-8 px-2.5 py-1" : "px-4 py-1.5"].join(" ")} onClick={() => setSupportOpen(true)}>
-          Support ♡
-        </button>
-      ) : null}
     </>
   );
 
@@ -559,9 +593,10 @@ export function GameApp() {
           })}
         </div>
 
-        <footer className="mt-1.5 shrink-0">
+        <footer className="mt-1.5 shrink-0 space-y-1.5">
           <div className="flex flex-wrap justify-center gap-1.5">{secondaryLinks(true)}</div>
-          {importError ? <p className="mt-1 text-center text-xs text-[var(--danger)]">{importError}</p> : null}
+          {donateNudge(true)}
+          {importError ? <p className="text-center text-xs text-[var(--danger)]">{importError}</p> : null}
         </footer>
       </main>
 
@@ -607,6 +642,7 @@ export function GameApp() {
 
             <div className="ornament-rule mt-0.5 hidden text-xs lg:flex">✦</div>
             <div className="hidden flex-wrap gap-2 lg:flex">{secondaryLinks(false)}</div>
+            <div className="hidden w-full max-w-md lg:block lg:max-w-none">{donateNudge(false)}</div>
             {importError ? <p className="hidden text-xs text-[var(--danger)] lg:block">{importError}</p> : null}
             <footer className="hidden text-xs text-[var(--ink-dim)] lg:block">
               Classic Irving Finkel rules · British Museum reconstruction

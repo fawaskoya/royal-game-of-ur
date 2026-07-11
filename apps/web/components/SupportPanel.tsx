@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { getDonateUrl } from "@/lib/donate";
 import { Modal } from "./ui/Modal";
 
 const AMOUNTS = [
@@ -11,22 +12,25 @@ const AMOUNTS = [
 ] as const;
 
 /**
- * Optional tips via Dodo Payments (Merchant of Record — works for
- * individuals in India). Prefers a Dashboard Payment Link
- * (`NEXT_PUBLIC_DONATE_URL`, fixed amount); falls back to a checkout session
- * via /api/donate when `DODO_PAYMENTS_API_KEY` is configured on the server
- * (variable tip amounts, since a payment link alone is fixed-price).
+ * Voluntary tips via Dodo Payments (Merchant of Record — India-friendly).
+ * Prefers a Dashboard Payment Link (`getDonateUrl()`); falls back to
+ * Checkout Sessions via /api/donate when only server keys are configured.
  */
 export function SupportPanel({ open, onClose }: { open: boolean; onClose(): void }) {
-  const paymentLink = process.env.NEXT_PUBLIC_DONATE_URL?.trim() || "";
+  const paymentLink = getDonateUrl();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const openCheckout = () => {
+    if (!paymentLink) return;
+    window.open(paymentLink, "_blank", "noopener,noreferrer");
+  };
+
   const go = async (cents: number) => {
     setError(null);
-    // Prefer a Dashboard Payment Link (no backend). Otherwise try Checkout API.
+    // Prefer a Dashboard Payment Link (no backend). Player picks amount on Dodo (PWYW).
     if (paymentLink) {
-      window.open(paymentLink, "_blank", "noopener,noreferrer");
+      openCheckout();
       return;
     }
     setBusy(true);
@@ -43,7 +47,7 @@ export function SupportPanel({ open, onClose }: { open: boolean; onClose(): void
       setError(
         e instanceof Error
           ? e.message
-          : "Set NEXT_PUBLIC_DONATE_URL or DODO_PAYMENTS_API_KEY to enable tips.",
+          : "Donate is not configured yet — set NEXT_PUBLIC_DONATE_URL or Dodo API keys.",
       );
     } finally {
       setBusy(false);
@@ -53,7 +57,7 @@ export function SupportPanel({ open, onClose }: { open: boolean; onClose(): void
   return (
     <Modal
       open={open}
-      title="Support the game"
+      title="Donate"
       onClose={onClose}
       actions={
         <button className="btn rounded-lg px-4 py-2 text-sm" onClick={onClose}>
@@ -62,35 +66,47 @@ export function SupportPanel({ open, onClose }: { open: boolean; onClose(): void
       }
     >
       <p className="text-sm leading-relaxed text-[var(--ink-dim)]">
-        Royal Game of Ur is free to play — no ads, no pay-to-win. If you enjoy racing seven pieces
-        home, a tip keeps the servers warm and funds the next boards and dice.
+        Royal Game of Ur is free — no ads, no pay-to-win. If the game has been kind to you,
+        a small tip helps keep the lights on and the next boards polished. Only if you want
+        to; the race is yours either way.
       </p>
 
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        {AMOUNTS.map((a) => (
-          <button
-            key={a.label}
-            type="button"
-            className="card btn rounded-xl px-3 py-3 text-left"
-            disabled={busy}
-            onClick={() => void go(a.cents)}
-          >
-            <div className="font-display text-sm">{a.label}</div>
-            <div className="text-xs text-[var(--ink-dim)]">{a.hint}</div>
-          </button>
-        ))}
-      </div>
-
       {paymentLink ? (
-        <p className="mt-3 text-xs text-[var(--ink-dim)]">
-          Secure checkout via Dodo Payments. You&apos;ll leave the game briefly, then can return anytime.
-        </p>
+        <>
+          <button
+            type="button"
+            className="btn btn-primary mt-4 w-full rounded-xl px-4 py-3 text-sm font-medium"
+            onClick={openCheckout}
+          >
+            Donate ♡
+          </button>
+          <p className="mt-3 text-xs leading-relaxed text-[var(--ink-dim)]">
+            Secure checkout via Dodo Payments — you can choose any amount. You&apos;ll leave
+            briefly, then can return anytime.
+          </p>
+        </>
       ) : (
-        <p className="mt-3 text-xs text-[var(--ink-dim)]">
-          Tips open once Dodo Payments is configured (
-          <code className="text-[var(--gold)]">DODO_PAYMENTS_API_KEY</code>
-          ). Cosmetics (board &amp; dice skins) are planned next — never affect fair play.
-        </p>
+        <>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            {AMOUNTS.map((a) => (
+              <button
+                key={a.label}
+                type="button"
+                className="card btn rounded-xl px-3 py-3 text-left"
+                disabled={busy}
+                onClick={() => void go(a.cents)}
+              >
+                <div className="font-display text-sm">{a.label}</div>
+                <div className="text-xs text-[var(--ink-dim)]">{a.hint}</div>
+              </button>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-[var(--ink-dim)]">
+            Tips open once Dodo Payments is configured (
+            <code className="text-[var(--gold)]">DODO_PAYMENTS_API_KEY</code>
+            ).
+          </p>
+        </>
       )}
 
       {error ? <p className="mt-2 text-xs text-[var(--danger)]">{error}</p> : null}
