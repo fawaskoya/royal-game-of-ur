@@ -25,7 +25,8 @@ export type TutorialAction =
   | { kind: "next" } // advance on button press
   | { kind: "roll"; total: number } // learner presses Roll → forced total
   | { kind: "move"; from: number } // learner must move the Light piece at `from`
-  | { kind: "auto"; roll: number; from: number | null }; // guide (Dark) plays after a beat
+  | { kind: "guideRoll"; total: number } // guide (Dark) rolls; dwells so the value registers before anything moves
+  | { kind: "guideMove"; from: number | null }; // guide plays the roll just revealed (null = enters from pool)
 
 export interface TutorialStep {
   readonly coach: string;
@@ -36,6 +37,13 @@ export interface TutorialStep {
  * Script notes: entering with n lands on path index n. Shared lane is 5–12
  * for both players (same physical squares); 8 is the safe central rosette.
  * Every scripted move is legal by construction — asserted at runtime in dev.
+ *
+ * Guide (Dark) turns split a roll from its move into two consecutive beats
+ * so neither can flash by: `guideRoll` reveals the throw and dwells (see
+ * GUIDE_BEAT_MS) before anything moves; the following `guideMove` step then
+ * plays the piece using that already-revealed roll. Guide beats state their
+ * number as a numeral ("4 —") to make the callout easy to scan at a glance;
+ * the learner's own narration keeps spelling numbers out in prose.
  */
 export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
@@ -45,12 +53,16 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   },
   {
     coach:
+      "The gold trail is your road: down your four home squares, along the shared middle — the battlefield — then two more and home. Both players travel it in the same shape, mirrored.",
+    action: { kind: "next" },
+  },
+  {
+    coach:
       "Four pyramid dice, each a coin-flip worth 0 or 1. Throw them — your total is how far one piece moves.",
     action: { kind: "roll", total: 4 },
   },
   {
-    coach:
-      "A four! A new piece enters that many squares up your private lane. Tap your glowing pool to bring one in.",
+    coach: "A four! Tap your glowing pool — the new piece walks four squares up your private lane.",
     action: { kind: "move", from: 0 },
   },
   {
@@ -59,17 +71,24 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
     action: { kind: "roll", total: 2 },
   },
   {
-    coach:
-      "Now step onto the middle row: the shared lane, where both armies walk the same squares. Move your piece forward.",
+    coach: "Move two squares onto the middle row — the shared lane, where both armies walk the same squares.",
     action: { kind: "move", from: 4 },
   },
   {
-    coach: "Dark plays by the same rules. Watch — a four enters a piece onto Dark's own rosette…",
-    action: { kind: "auto", roll: 4, from: null },
+    coach: "Dark plays by the same rules. The guide rolls a 4.",
+    action: { kind: "guideRoll", total: 4 },
   },
   {
-    coach: "…and the extra throw pushes it onto the shared lane, just ahead of yours.",
-    action: { kind: "auto", roll: 3, from: 4 },
+    coach: "4 — a new piece enters and lands right on the rosette.",
+    action: { kind: "guideMove", from: null },
+  },
+  {
+    coach: "Rosettes grant another roll… and it's a 3.",
+    action: { kind: "guideRoll", total: 3 },
+  },
+  {
+    coach: "3 — the piece steps onto the shared lane, just ahead of yours.",
+    action: { kind: "guideMove", from: 4 },
   },
   {
     coach:
@@ -81,8 +100,12 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
     action: { kind: "move", from: 6 },
   },
   {
-    coach: "Captured — Dark starts that journey over. No extra turn for captures, so Dark replies…",
-    action: { kind: "auto", roll: 1, from: null },
+    coach: "Captured — Dark starts that journey over. No extra turn for captures — the guide rolls a 1.",
+    action: { kind: "guideRoll", total: 1 },
+  },
+  {
+    coach: "1 — a fresh piece enters Dark's private lane.",
+    action: { kind: "guideMove", from: null },
   },
   {
     coach:
@@ -99,12 +122,16 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
     action: { kind: "roll", total: 4 },
   },
   {
-    coach: "Push your piece down the shared lane toward the exit.",
+    coach: "Push your piece four squares down the shared lane toward the exit.",
     action: { kind: "move", from: 8 },
   },
   {
-    coach: "Dark inches forward on their private lane — not a threat yet.",
-    action: { kind: "auto", roll: 2, from: 1 },
+    coach: "Dark rolls a 2 — not a threat to you yet.",
+    action: { kind: "guideRoll", total: 2 },
+  },
+  {
+    coach: "2 — the piece creeps forward on Dark's private lane.",
+    action: { kind: "guideMove", from: 1 },
   },
   {
     coach:
@@ -112,12 +139,12 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
     action: { kind: "roll", total: 2 },
   },
   {
-    coach: "Move onto the exit-lane rosette. One more exact throw and this piece is home.",
+    coach: "Move two squares onto the exit-lane rosette. One more exact throw and this piece is home.",
     action: { kind: "move", from: 12 },
   },
   {
     coach:
-      "Bearing off needs the exact count — you are one square from home, so only a one will do. Roll!",
+      "Rosette again — another roll. You're one square from home, so only a one will bear this piece off. Roll!",
     action: { kind: "roll", total: 1 },
   },
   {
@@ -137,7 +164,10 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
 
 const TUTORIAL_KEY = "ur:tutorial";
 /** Bump when the step script changes so mid-progress saves reset cleanly. */
-const TUTORIAL_VERSION = 2;
+const TUTORIAL_VERSION = 3;
+
+/** Dwell for each guide beat (roll reveal or move) — comfortably over the 1.6s floor so a thrown number always registers before anything moves. */
+const GUIDE_BEAT_MS = 1700;
 
 interface TutorialProgress {
   step: number;
@@ -193,10 +223,9 @@ function stateAfter(steps: number): GameState {
   let state = createGame();
   for (let i = 0; i < steps; i++) {
     const action = TUTORIAL_STEPS[i]!.action;
-    if (action.kind === "roll") {
+    if (action.kind === "roll" || action.kind === "guideRoll") {
       state = applyRoll(state, makeRoll(action.total));
-    } else if (action.kind === "auto") {
-      state = applyRoll(state, makeRoll(action.roll));
+    } else if (action.kind === "guideMove") {
       const moves = legalMoves(state);
       const move =
         action.from === null ? moves.find((m) => m.from === 0) : moves.find((m) => m.from === action.from);
@@ -249,19 +278,24 @@ export function useTutorial(): UseTutorialResult {
     advance(null);
   }, [step, advance]);
 
-  // Guide (Dark) turns: play the scripted roll+move after a readable beat.
+  // Guide (Dark) turns: each roll gets its own dwelling beat before anything
+  // moves — `guideRoll` reveals the total, and the following `guideMove` step
+  // plays it. Both beats keep "Dark is playing…" on continuously.
   useEffect(() => {
-    if (step.action.kind !== "auto") return;
-    const { roll: total, from } = step.action;
+    const { action } = step;
+    if (action.kind !== "guideRoll" && action.kind !== "guideMove") return;
     setGuideActing(true);
     timerRef.current = setTimeout(() => {
+      if (action.kind === "guideRoll") {
+        advance(applyRoll(state, makeRoll(action.total)));
+        return;
+      }
       setGuideActing(false);
-      let nextState = applyRoll(state, makeRoll(total));
-      const moves = legalMoves(nextState);
-      const move = from === null ? moves.find((m) => m.from === 0) : moves.find((m) => m.from === from);
-      if (move) nextState = applyMove(nextState, move);
-      advance(nextState);
-    }, 1400);
+      const moves = legalMoves(state);
+      const move =
+        action.from === null ? moves.find((m) => m.from === 0) : moves.find((m) => m.from === action.from);
+      advance(move ? applyMove(state, move) : state);
+    }, GUIDE_BEAT_MS);
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };

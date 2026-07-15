@@ -112,6 +112,7 @@ export function TutorialView({ onExit }: { onExit(): void }) {
                 onMove={tutorial.movePiece}
                 orientation={layout}
                 hintMove={tutorial.allowedMoves[0] ?? null}
+                routeFor={0}
               />
             </div>
 

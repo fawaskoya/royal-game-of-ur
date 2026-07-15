@@ -1,8 +1,31 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { getLayout, occupancy, type GameState, type Move, type PlayerId } from "@ur/engine";
+import { RouteOverlay } from "./RouteOverlay";
+import { useSettings } from "@/lib/settings";
+
+/** Waypoint stepper (movement-agent): ms a piece rests on each intermediate
+ *  square while walking a multi-square move, entry, or bear-off. */
+const HOP_MS = 90;
+/** Default piece spring — used whenever a piece is not mid-walk. */
+const BASE_SPRING = { type: "spring", stiffness: 420, damping: 32 } as const;
+/** Snappier per-hop spring while a piece is stepping through its route. */
+const HOP_SPRING = { type: "spring", stiffness: 650, damping: 40 } as const;
+
+type BoardCell = { row: number; col: number };
+
+/** Displayed-cell override for the piece currently walking its route. */
+interface PieceWalk {
+  /** `${player}-${piece}`, matching each piece's stable overlay key. */
+  key: string;
+  player: PlayerId;
+  piece: number;
+  /** Intermediate + final squares to visit, in order (never the pool/finish). */
+  cells: readonly BoardCell[];
+  step: number;
+}
 
 function RosetteGlyph() {
   const petals = Array.from({ length: 8 }, (_, i) => i * 45);
@@ -16,12 +39,12 @@ function RosetteGlyph() {
           rx="4.5"
           ry="8"
           fill="none"
-          stroke="var(--gold)"
+          stroke="var(--rosette-ink)"
           strokeWidth="1.6"
           transform={`rotate(${angle} 20 20)`}
         />
       ))}
-      <circle cx="20" cy="20" r="3.2" fill="var(--gold)" />
+      <circle cx="20" cy="20" r="3.2" fill="var(--rosette-ink)" />
     </svg>
   );
 }
@@ -64,6 +87,8 @@ export interface BoardProps {
   orientation?: "horizontal" | "vertical";
   /** Hint-engine suggestion: its destination is ringed, its piece pulses. */
   hintMove?: Move | null;
+  /** Draw this player's full route as a track overlay (tutorial). */
+  routeFor?: PlayerId | null;
 }
 
 /**
@@ -72,11 +97,97 @@ export interface BoardProps {
  * only the capturer's grid position updates (smooth move) and the captured
  * piece's layoutId flies to the pool in PlayerPanel.
  */
-export function Board({ state, legal, canAct, onMove, orientation = "horizontal", hintMove }: BoardProps) {
+export function Board({ state, legal, canAct, onMove, orientation = "horizontal", hintMove, routeFor = null }: BoardProps) {
   const layout = useMemo(() => getLayout(state.ruleset), [state.ruleset]);
   const occ = useMemo(() => occupancy(state), [state]);
   const [hovered, setHovered] = useState<Move | null>(null);
   const vertical = orientation === "vertical";
+  const { settings } = useSettings();
+
+  // --- Waypoint stepper (movement-agent) -----------------------------------
+  // Walks the mover through its intermediate squares instead of one straight
+  // spring, so the route reads instead of teleporting. See the history
+  // effect below for the guards (undo/scrub/restore/resync, interrupts,
+  // reduced motion) that decide when this fires.
+  const [walk, setWalk] = useState<PieceWalk | null>(null);
+  const prevHistoryLengthRef = useRef(state.history.length);
+  const hopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearHopTimer = useCallback(() => {
+    if (hopTimerRef.current !== null) {
+      clearTimeout(hopTimerRef.current);
+      hopTimerRef.current = null;
+    }
+  }, []);
+
+  // Unmount safety net — decoupled from the history effect below on purpose:
+  // that effect doesn't always return a cleanup (see its comments), so a
+  // dedicated mount/unmount-only effect is the only place guaranteed to run
+  // exactly once at teardown.
+  useEffect(() => clearHopTimer, [clearHopTimer]);
+
+  useEffect(() => {
+    const prevLength = prevHistoryLengthRef.current;
+    const nextLength = state.history.length;
+    prevHistoryLengthRef.current = nextLength;
+
+    // Undo, replay scrub, restore, resync (or any non-move-driven re-run,
+    // e.g. a settings toggle) — don't infer a route from a discontinuous
+    // history. Cancel whatever was walking and snap to the real state.
+    if (nextLength - prevLength !== 1) {
+      clearHopTimer();
+      setWalk(null);
+      return;
+    }
+
+    const event = state.history[nextLength - 1]!;
+    // Only a move qualifies. A roll/pass — or a 1-square move, which has no
+    // intermediate square to walk — isn't a reason to start a NEW walk, but
+    // it must not cancel one already in flight from a prior move either.
+    if (event.type !== "move") return;
+    if (event.to - event.from < 2) return;
+
+    const reducedMotion =
+      settings.motion === "reduced" ||
+      (typeof window !== "undefined" &&
+        typeof window.matchMedia === "function" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    if (reducedMotion) return;
+
+    const { player, piece, from, to } = event;
+    // Entry (from=0) starts the walk at square 1 — the pool→board layoutId
+    // flight lands there and continues on foot. Bear-off (to=finishIndex)
+    // walks to the last square, then the piece departs.
+    const startIdx = Math.max(from, 0) + 1;
+    const endIdx = Math.min(to, layout.finishIndex - 1);
+    const cells: BoardCell[] = [];
+    for (let i = startIdx; i <= endIdx; i++) {
+      const cell = layout.cellAt(player, i);
+      if (cell) cells.push(cell);
+    }
+    if (cells.length === 0) return;
+
+    // A new qualifying move interrupts any walk in progress: drop it
+    // instantly (its piece is already at its real destination, so it just
+    // stops overriding) and start the new one.
+    clearHopTimer();
+    const key = `${player}-${piece}`;
+    setWalk({ key, player, piece, cells, step: 0 });
+
+    let step = 0;
+    const advance = () => {
+      step += 1;
+      if (step >= cells.length) {
+        hopTimerRef.current = null;
+        setWalk((current) => (current && current.key === key ? null : current));
+        return;
+      }
+      setWalk((current) => (current && current.key === key ? { ...current, step } : current));
+      hopTimerRef.current = setTimeout(advance, HOP_MS);
+    };
+    hopTimerRef.current = setTimeout(advance, HOP_MS);
+  }, [state.history, layout, settings.motion, clearHopTimer]);
+  // --- end waypoint stepper --------------------------------------------------
 
   const moveForPiece = useMemo(() => {
     const map = new Map<string, Move>();
@@ -97,6 +208,23 @@ export function Board({ state, legal, canAct, onMove, orientation = "horizontal"
     }
     return map;
   }, [hovered, hintMove, layout, occ]);
+
+  // Path breadcrumbs (movement-agent): a small dot on the squares strictly
+  // between from/to for the hovered and hinted move — the from square holds
+  // the piece itself, and the to square already gets a target ring above.
+  const crumbKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const move of [hovered, hintMove]) {
+      if (!move) continue;
+      const startIdx = Math.max(move.from, 0) + 1;
+      const endIdx = move.to - 1;
+      for (let i = startIdx; i <= endIdx; i++) {
+        const key = layout.keyAt(move.player, i);
+        if (key) keys.add(key);
+      }
+    }
+    return keys;
+  }, [hovered, hintMove, layout]);
 
   // Quiet wash on the from/to squares of the most recent move.
   const lastMoveKeys = useMemo(() => {
@@ -192,6 +320,7 @@ export function Board({ state, legal, canAct, onMove, orientation = "horizontal"
                 info.rosette ? "tile-rosette" : "",
                 target === "capture" ? "tile-target-capture" : target === "plain" ? "tile-target" : "",
                 !target && lastMoveKeys.has(info.key) ? "tile-last" : "",
+                crumbKeys.has(info.key) ? "tile-crumb" : "",
               ].join(" ")}
               style={place(info.cell.row, info.cell.col)}
             >
@@ -207,6 +336,13 @@ export function Board({ state, legal, canAct, onMove, orientation = "horizontal"
         )}
       </div>
 
+      {/* Route track (tutorial): sits above tiles, below pieces. */}
+      {routeFor !== null ? (
+        <div className={["pointer-events-none absolute inset-0 p-2 sm:p-3"].join(" ")} aria-hidden>
+          <RouteOverlay layout={layout} player={routeFor} vertical={vertical} />
+        </div>
+      ) : null}
+
       {/*
         Piece overlay — same grid metrics as the tile layer so place() aligns.
         Pieces keep a stable React identity across cells; only their grid
@@ -220,19 +356,23 @@ export function Board({ state, legal, canAct, onMove, orientation = "horizontal"
           const interactive = canAct && move !== undefined && player === state.current;
           const cellKey = `${row},${col}`;
           const isHintPiece = hintPieceKey === cellKey && player === (hintMove?.player ?? -1);
+          // Waypoint stepper: while this piece is walking its route, render
+          // it at the current hop instead of its (already-final) engine cell.
+          const isWalking = walk !== null && walk.key === key;
+          const pos = isWalking ? walk!.cells[walk!.step]! : { row, col };
 
           return (
             <motion.button
               key={key}
               layoutId={`piece-${player}-${piece}`}
               layout
-              transition={{ type: "spring", stiffness: 420, damping: 32 }}
+              transition={isWalking ? HOP_SPRING : BASE_SPRING}
               className={[
                 "pointer-events-auto relative z-10 flex items-center justify-center rounded-md",
                 isHintPiece ? "piece-hint" : "",
               ].join(" ")}
               style={{
-                ...place(row, col),
+                ...place(pos.row, pos.col),
                 cursor: interactive ? "pointer" : "default",
               }}
               disabled={!interactive}
@@ -253,6 +393,27 @@ export function Board({ state, legal, canAct, onMove, orientation = "horizontal"
             </motion.button>
           );
         })}
+        {/*
+          Bear-off ghost: a walking piece whose path index has already
+          reached finishIndex is excluded from boardPieces above, so nothing
+          renders its layoutId. Keep it alive for the walk's duration so it
+          steps across the last squares and departs instead of vanishing at
+          `from`; sharing the layoutId means any future home/pool flight for
+          this piece continues from wherever the walk ends.
+        */}
+        {walk !== null && !boardPieces.some((p) => p.key === walk.key) ? (
+          <motion.div
+            key={`walk-ghost-${walk.key}`}
+            layoutId={`piece-${walk.key}`}
+            layout
+            transition={HOP_SPRING}
+            className="pointer-events-none absolute z-10 flex items-center justify-center rounded-md"
+            style={place(walk.cells[walk.step]!.row, walk.cells[walk.step]!.col)}
+            aria-hidden
+          >
+            <PieceDisc player={walk.player} />
+          </motion.div>
+        ) : null}
       </div>
     </div>
   );
