@@ -20,7 +20,8 @@ import {
   type CosmeticSku,
   type SkuId,
 } from "@/lib/cosmetics";
-import { ensureSession } from "@/lib/multiplayer/supabaseClient";
+import { ensureSession, getSupabaseClient } from "@/lib/multiplayer/supabaseClient";
+import { signInWithEmail, signUpWithEmail } from "@/lib/multiplayer/auth";
 import { Modal } from "./ui/Modal";
 import { Board } from "./Board";
 import { DieGradients } from "./DiceTray";
@@ -243,8 +244,17 @@ export function AtelierPanel({ open, onClose }: { open: boolean; onClose(): void
   const [previews, setPreviews] = useState<Partial<Record<CosmeticCategory, SkuId>>>({});
   const [unlocking, setUnlocking] = useState(false);
   const [serverOwned, setServerOwned] = useState<readonly SkuId[]>([]);
+  const [isGuest, setIsGuest] = useState(false);
   const [buying, setBuying] = useState(false);
   const [buyError, setBuyError] = useState<string | null>(null);
+  // Account gate: shown at purchase intent for guests ("purchase") or as a
+  // post-purchase "secure your unlocks" step ("secure").
+  const [accountStep, setAccountStep] = useState<null | "purchase" | "secure">(null);
+  const [acctMode, setAcctMode] = useState<"signup" | "signin">("signup");
+  const [acctEmail, setAcctEmail] = useState("");
+  const [acctPassword, setAcctPassword] = useState("");
+  const [acctBusy, setAcctBusy] = useState(false);
+  const [acctError, setAcctError] = useState<string | null>(null);
   const hadPreviews = useRef(false);
 
   // Purchased unlocks live server-side; refresh on open and when the tab
@@ -254,6 +264,12 @@ export function AtelierPanel({ open, onClose }: { open: boolean; onClose(): void
     let disposed = false;
     const refresh = () => void fetchEntitlements().then((skus) => !disposed && setServerOwned(skus));
     refresh();
+    // Purchases bind to the profile — warn guests theirs lives in this browser.
+    void getSupabaseClient()
+      ?.auth.getUser()
+      .then(({ data }) => {
+        if (!disposed) setIsGuest(Boolean(data.user && (data.user.is_anonymous || !data.user.email)));
+      });
     window.addEventListener("focus", refresh);
     return () => {
       disposed = true;
@@ -333,7 +349,7 @@ export function AtelierPanel({ open, onClose }: { open: boolean; onClose(): void
 
   const allUnlocked = useMemo(() => ALL_PAID_SKUS.every((id) => owned.has(id)), [owned]);
 
-  const buyAll = () => {
+  const startCheckout = () => {
     if (buying) return;
     setBuying(true);
     setBuyError(null);
@@ -350,6 +366,52 @@ export function AtelierPanel({ open, onClose }: { open: boolean; onClose(): void
       } catch (e) {
         setBuyError(e instanceof Error ? e.message : "checkout failed");
         setBuying(false);
+      }
+    })();
+  };
+
+  /** Purchase intent: emailed players go straight to payment; guests first
+   * get the account step — create (keeps the same uid, so nothing is lost),
+   * sign in, or knowingly continue browser-bound. */
+  const buyAll = () => {
+    if (buying) return;
+    setBuyError(null);
+    if (isGuest) {
+      setAcctError(null);
+      setAcctMode("signup");
+      setAccountStep("purchase");
+      return;
+    }
+    startCheckout();
+  };
+
+  const submitAccount = () => {
+    if (acctBusy) return;
+    setAcctBusy(true);
+    setAcctError(null);
+    void (async () => {
+      try {
+        const snap =
+          acctMode === "signup"
+            ? await signUpWithEmail(acctEmail, acctPassword)
+            : await signInWithEmail(acctEmail, acctPassword);
+        if (!snap.user) throw new Error("could not establish the account");
+        setIsGuest(Boolean(snap.user.isAnonymous));
+        setAcctPassword("");
+        const wasPurchase = accountStep === "purchase";
+        setAccountStep(null);
+        // Signing in can switch identity — re-pull what that profile owns.
+        void fetchEntitlements().then(setServerOwned);
+        if (wasPurchase) startCheckout();
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "something went wrong";
+        setAcctError(
+          acctMode === "signup" && /registered|already|exists/i.test(message)
+            ? `${message} — try “Sign in instead” below.`
+            : message,
+        );
+      } finally {
+        setAcctBusy(false);
       }
     })();
   };
@@ -388,7 +450,7 @@ export function AtelierPanel({ open, onClose }: { open: boolean; onClose(): void
     >
       {open ? <LivePreview flair={previewFlair} /> : null}
 
-      {!allUnlocked ? (
+      {!allUnlocked && accountStep === null ? (
         <div className="card card--gilded mt-3 flex items-center justify-between gap-3 rounded-xl px-3 py-2.5">
           <div className="min-w-0">
             <div className="font-display text-sm text-[var(--gold)]">Unlock everything — ${UNLOCK_ALL_PRICE_USD.toFixed(2)}</div>
@@ -404,6 +466,107 @@ export function AtelierPanel({ open, onClose }: { open: boolean; onClose(): void
             {buying ? "Opening…" : "Unlock all"}
           </button>
         </div>
+      ) : null}
+
+      {allUnlocked && isGuest && accountStep === null ? (
+        <div className="card card--gilded mt-3 flex items-center justify-between gap-3 rounded-xl px-3 py-2.5">
+          <div className="min-w-0">
+            <div className="font-display text-sm text-[var(--gold)]">Secure your unlocks</div>
+            <div className="text-[11px] leading-snug text-[var(--ink-dim)]">
+              They&apos;re tied to this browser right now — add an email to keep them on every device.
+            </div>
+          </div>
+          <button
+            className="btn btn-primary shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium"
+            onClick={() => {
+              setAcctError(null);
+              setAcctMode("signup");
+              setAccountStep("secure");
+            }}
+          >
+            Add email
+          </button>
+        </div>
+      ) : null}
+
+      {accountStep !== null ? (
+        <form
+          className="card card--gilded mt-3 flex flex-col gap-2 rounded-xl px-3 py-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            submitAccount();
+          }}
+        >
+          <div className="font-display text-sm text-[var(--gold)]">
+            {accountStep === "purchase" ? "Keep your unlocks forever" : "Secure your unlocks"}
+          </div>
+          <div className="text-[11px] leading-snug text-[var(--ink-dim)]">
+            {acctMode === "signup"
+              ? "One step before payment: an email makes your purchase yours on every device — your games and rating carry over too."
+              : "Sign in and the purchase binds to your existing account."}
+          </div>
+          <input
+            type="email"
+            autoComplete="email"
+            placeholder="Email"
+            className="btn rounded-lg px-3 py-2 text-sm"
+            value={acctEmail}
+            onChange={(e) => setAcctEmail(e.target.value)}
+            required
+          />
+          <input
+            type="password"
+            autoComplete={acctMode === "signup" ? "new-password" : "current-password"}
+            placeholder="Password (6+ characters)"
+            className="btn rounded-lg px-3 py-2 text-sm"
+            value={acctPassword}
+            onChange={(e) => setAcctPassword(e.target.value)}
+            minLength={6}
+            required
+          />
+          <div className="flex gap-2">
+            <button type="submit" className="btn btn-primary flex-1 rounded-lg px-3 py-2 text-xs font-medium" disabled={acctBusy}>
+              {acctBusy
+                ? "…"
+                : accountStep === "purchase"
+                  ? acctMode === "signup"
+                    ? "Create account & continue"
+                    : "Sign in & continue"
+                  : acctMode === "signup"
+                    ? "Create account"
+                    : "Sign in"}
+            </button>
+            <button type="button" className="btn rounded-lg px-3 py-2 text-xs" onClick={() => setAccountStep(null)}>
+              Cancel
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <button
+              type="button"
+              className="text-[11px] text-[var(--ink-dim)] underline decoration-dotted underline-offset-2"
+              onClick={() => {
+                setAcctError(null);
+                setAcctMode(acctMode === "signup" ? "signin" : "signup");
+              }}
+            >
+              {acctMode === "signup" ? "Already have an account? Sign in instead" : "New here? Create an account"}
+            </button>
+            {accountStep === "purchase" ? (
+              <button
+                type="button"
+                className="text-[11px] text-[var(--ink-dim)] underline decoration-dotted underline-offset-2"
+                title="Unlocks will only exist in this browser until you add an email"
+                onClick={() => {
+                  setAccountStep(null);
+                  startCheckout();
+                }}
+              >
+                Skip — continue as guest (this browser only)
+              </button>
+            ) : null}
+          </div>
+          {acctError ? <p className="text-xs text-[var(--danger)]">{acctError}</p> : null}
+        </form>
       ) : null}
       {buyError ? <p className="mt-2 text-xs text-[var(--danger)]">{buyError}</p> : null}
 
