@@ -33,7 +33,11 @@ describe("difficulty ladder strength", () => {
     expect(result.aWinRate).toBeGreaterThanOrEqual(0.6);
   });
 
-  it("hard beats medium", () => {
+  // 40 seeded games of depth-2 search sit right at vitest's default 5s
+  // timeout on a loaded machine (observed 4.6–8.7s) — the assertion is
+  // deterministic, only the wall-clock varies, so give it explicit headroom
+  // like the 40s agent-contract test already has.
+  it("hard beats medium", { timeout: 30_000 }, () => {
     const result = runMatch(() => createAgent("hard"), () => createAgent("medium"), {
       games: 40,
       seed: 12345,

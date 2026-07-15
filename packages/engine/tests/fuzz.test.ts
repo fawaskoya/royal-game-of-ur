@@ -33,7 +33,10 @@ function checkInvariants(state: GameState): void {
 }
 
 describe("randomized self-play fuzz", () => {
-  it("120 seeded games finish legally with all invariants intact", () => {
+  // 120 full games is wall-clock-variable on a loaded machine (observed
+  // >5s); deterministic assertions, so give explicit headroom instead of
+  // riding vitest's 5s default.
+  it("120 seeded games finish legally with all invariants intact", { timeout: 30_000 }, () => {
     const gameLengths: number[] = [];
     for (let seed = 1; seed <= 120; seed++) {
       const session = new GameSession({ seed });

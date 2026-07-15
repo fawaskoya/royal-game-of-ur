@@ -5,7 +5,7 @@ import { createAgent, DIFFICULTIES, playGame, bestMove } from "../src";
 describe("agent contract", () => {
   it(
     "every difficulty returns only legal moves and finishes full games",
-    { timeout: 60_000 }, // search tiers think for real (master ≈ 150 ms/move)
+    { timeout: 120_000 }, // search tiers think for real (master ≈ 150 ms/move)
     () => {
       // playGame validates every move through the engine, which throws on any
       // illegal choice — completing games is itself the legality proof.
