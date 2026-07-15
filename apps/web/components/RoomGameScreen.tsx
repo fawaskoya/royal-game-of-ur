@@ -9,6 +9,7 @@ import type { UseLocalRoomResult } from "@/lib/multiplayer/useLocalRoom";
 import { Board } from "./Board";
 import { PlayerPanel } from "./PlayerPanel";
 import { DiceTray } from "./DiceTray";
+import { OwnFlair } from "./Flair";
 
 /**
  * The in-room game screen, shared by the internet and same-device flows —
@@ -53,7 +54,11 @@ export function RoomGameScreen({
           </button>
           <div className="text-center">
             <h1 className="font-display text-lg tracking-wide text-[var(--gold)] sm:text-xl">{title}</h1>
-            {subtitle ? <div className="text-[11px] text-[var(--ink-dim)]">{subtitle}</div> : null}
+            {subtitle ? (
+              <div className="text-[11px] text-[var(--ink-dim)]">
+                {subtitle} <OwnFlair />
+              </div>
+            ) : null}
           </div>
           <span className="chip">You are {room.mySeat === 0 ? "☀ Light" : "☾ Dark"}</span>
         </header>

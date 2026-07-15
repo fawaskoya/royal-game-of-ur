@@ -18,6 +18,7 @@ The definitive digital version of the world's oldest playable board game (c. 260
 | Server Elo leaderboard (W–L, win%, last active) | ✅ |
 | Interactive tutorial (to bear-off) | ✅ |
 | Homepage with self-playing attract board; viewport-fit desktop + mobile | ✅ |
+| Atelier cosmetics (boards/dice/pieces/flair) | 🧪 dev only — [catalog](docs/COSMETICS_CATALOG.md) |
 | Custom domain + donations | ✅ Donate on homepage → Dodo (`dodo.pe/support-ur`) |
 | Cosmetics (boards / dice) | 📋 planned — [docs/MONETIZATION.md](docs/MONETIZATION.md) |
 

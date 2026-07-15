@@ -9,6 +9,7 @@ import {
   type AuthSnapshot,
 } from "@/lib/multiplayer/auth";
 import { saveHandle, HANDLE_MAX, HANDLE_MIN } from "@/lib/multiplayer/onlineIdentity";
+import { OwnFlair } from "./Flair";
 
 /**
  * Compact account strip for matchmaking / online lobbies.
@@ -61,7 +62,7 @@ export function AuthPanel({
           <div className="text-xs uppercase tracking-widest text-[var(--ink-dim)]">Account</div>
           {user ? (
             <div className="mt-1 font-display text-base">
-              {identity?.handle ?? "Player"}
+              {identity?.handle ?? "Player"} <OwnFlair />
               <span className="ml-2 chip">
                 {user.isAnonymous ? "Guest" : "Signed in"}
               </span>

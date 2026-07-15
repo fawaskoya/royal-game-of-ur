@@ -51,9 +51,9 @@ export function Die({ value, dim, index, speed }: { value: 0 | 1; dim: boolean; 
       aria-hidden
     >
       <svg viewBox="0 0 40 40" className="h-full w-full drop-shadow-sm">
-        <polygon points="20,4 6,36 20,36" fill="url(#dieFaceLight)" stroke="var(--frame-edge)" strokeWidth="1.4" strokeLinejoin="round" />
-        <polygon points="20,4 34,36 20,36" fill="url(#dieFaceDark)" stroke="var(--frame-edge)" strokeWidth="1.4" strokeLinejoin="round" />
-        {value === 1 ? <circle cx="20" cy="26" r="2.8" fill="#211906" /> : null}
+        <polygon points="20,4 6,36 20,36" fill="var(--die-face, url(#dieFaceLight))" stroke="var(--die-edge)" strokeWidth="1.4" strokeLinejoin="round" />
+        <polygon points="20,4 34,36 20,36" fill="var(--die-face, url(#dieFaceDark))" stroke="var(--die-edge)" strokeWidth="1.4" strokeLinejoin="round" />
+        {value === 1 ? <circle cx="20" cy="26" r="2.8" fill="var(--die-pip)" /> : null}
       </svg>
     </motion.div>
   );

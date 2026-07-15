@@ -12,6 +12,10 @@
   --tile: #e3d6ba;
   --tile-lane: #eadfc6;
   --tile-edge: #b3a37e;
+  /* Net-new indirection (cosmetics skins). Equals --gold today exactly, so
+     RosetteGlyph's color is unchanged unskinned; kept independent of --gold
+     so board skins never have to touch the page-chrome gold token. */
+  --rosette-ink: #c9a24b;
   --gold: #c9a24b;
   --gold-bright: #ecd08a;
   --gold-soft: rgba(201, 162, 75, 0.55);
@@ -22,6 +26,15 @@
   --light-piece-edge: #6b5b38;
   --dark-piece: #2e2a26;
   --dark-piece-edge: #c9a24b;
+  /* Net-new indirection (cosmetics skins). Literal copies of the values
+     they replace (frame-edge's current hex; the pip's hard-coded fill) so
+     dice recolor independently of the board/page chrome. --die-face has
+     deliberately NO default here: DiceTray's fill="var(--die-face,
+     url(#dieFaceLight))" falls back to the existing two-facet gradient
+     when unset, so the free/default die stays pixel-identical; any dice
+     skin that sets --die-face collapses both facets to that flat color. */
+  --die-edge: #8a6f3a;
+  --die-pip: #211906;
   --danger: #b4543e;
   --danger-soft: rgba(180, 84, 62, 0.55);
 }
@@ -863,4 +876,156 @@ body {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* === COSMETIC SKINS (per docs/COSMETICS_CATALOG.md) === */
+/* Paid/stub SKUs only — the free SKUs (board.classic_museum, dice.bone_classic,
+   piece.alabaster_obsidian) already match the :root defaults above exactly, so
+   an absent data-*-skin attribute renders them with zero extra CSS. Flair has
+   no CSS token surface (CONTRACT.md) — no blocks below. Each block overrides
+   only the tokens named in CONTRACT.md's "Token surface a skin may override"
+   and never page-chrome tokens (--bg/--ink/--gold/--gold-bright/--gold-soft/
+   --gold-faint/--ink-dim/--bg-raised/--danger/--danger-soft). */
+
+/* --- Boards: Royal Treasury + Star Omens + Excavation stub --- */
+
+:root[data-board-skin="cedar_bitumen"] {
+  --frame: #3a2418;
+  --frame-edge: #1c140d;
+  --tile: #e8d2a8;
+  --tile-lane: #efdcb4;
+  --tile-edge: #6b5230;
+  --rosette-ink: #cf9a45;
+}
+
+:root[data-board-skin="night_lapis"] {
+  --frame: #12172c;
+  --frame-edge: #b5924a;
+  --tile: #d7dceb;
+  --tile-lane: #e4e8f2;
+  --tile-edge: #35407a;
+  --rosette-ink: #d4af5a;
+}
+
+:root[data-board-skin="floodplain_parchment"] {
+  --frame: #4a3520;
+  --frame-edge: #9c8148;
+  --tile: #ede2c2;
+  --tile-lane: #f2e9cd;
+  --tile-edge: #b8a374;
+  --rosette-ink: #c1893f;
+}
+
+/* Star Omens flagship board. Palette-risk fix (see CATALOG risk list #1 and
+   #4): catalog's suggested --rosette-ink (#cbd0e6, pale silver) measures
+   ~1.18:1 against catalog's suggested --tile (#e6e2d6) — effectively
+   invisible, light-on-light. Fixed by inking the rosette a deep slate-blue
+   ("starlight ink" rather than pale silver foil) for ~7.1:1 contrast, and by
+   warming/shifting --tile + --tile-lane a step further from
+   board.night_lapis's cool pale-blue tile so the two dark "night sky"
+   boards read apart at a glance (risk #4). --tile-edge/--frame/--frame-edge
+   are unchanged from the catalog. */
+:root[data-board-skin="venus_tablet"] {
+  --frame: #0d0f1c;
+  --frame-edge: #7d86a8;
+  --tile: #e8ddc8;
+  --tile-lane: #eee3ce;
+  --tile-edge: #454b6e;
+  --rosette-ink: #3d4460;
+}
+
+/* Excavation Finds — locked stub this sprint, unlocked later by achievement. */
+:root[data-board-skin="field_journal"] {
+  --frame: #4b3a26;
+  --frame-edge: #7a6b52;
+  --tile: #ddcca8;
+  --tile-lane: #e6d8b8;
+  --tile-edge: #8a765a;
+  --rosette-ink: #5b5346;
+}
+
+/* --- Dice: Royal Treasury --- */
+
+/* Palette-risk fix (see CATALOG risk list #2): catalog's suggested --die-pip
+   (#9c7530, antique gold) measures ~3.18:1 against --die-face (#ecdfc0) —
+   the flagged legibility risk at real die size (~24-28px, smaller still in
+   the horizontal sidebar). Darkened to keep the antique-gold hue while
+   lifting contrast to ~5.75:1. --die-face/--die-edge unchanged from catalog. */
+:root[data-dice-skin="gold_inlaid_bone"] {
+  --die-face: #ecdfc0;
+  --die-edge: #b58a3e;
+  --die-pip: #6b4f1f;
+}
+
+:root[data-dice-skin="volcanic_obsidian"] {
+  --die-face: #17140f;
+  --die-edge: #3a352c;
+  --die-pip: #efe6cf;
+}
+
+:root[data-dice-skin="carnelian_gold"] {
+  --die-face: #7a2f22;
+  --die-edge: #c9974a;
+  --die-pip: #e8c37a;
+}
+
+/* --- Pieces: Royal Treasury --- */
+
+:root[data-piece-skin="ivory_basalt"] {
+  --light-piece: #f0e6cd;
+  --light-piece-edge: #5c4c30;
+  --dark-piece: #3a3632;
+  --dark-piece-edge: #b8923f;
+}
+
+/* Both edges intentionally share one lapis-blue accent (catalog: the "paired
+   eyes" motif, not an oversight) — fill-color contrast alone carries the
+   light/dark read here, by a wide margin per the catalog's own numbers. */
+:root[data-piece-skin="lapis_eyes"] {
+  --light-piece: #f2ecdd;
+  --light-piece-edge: #3f5cae;
+  --dark-piece: #241f1c;
+  --dark-piece-edge: #3f5cae;
+}
+
+/* Same shared-edge pattern as lapis_eyes, this time in electrum. */
+:root[data-piece-skin="electrum_filigree"] {
+  --light-piece: #f5ecd8;
+  --light-piece-edge: #d3b56a;
+  --dark-piece: #2c2620;
+  --dark-piece-edge: #d3b56a;
+}
+
+/* === MOVE PATH BREADCRUMBS (movement-agent) === */
+.tile-crumb::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.4em;
+  height: 0.4em;
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--rosette-ink) 55%, transparent);
+  pointer-events: none;
+}
+
+/* === ROUTE OVERLAY (route-overlay-agent) === */
+/* Gentle attention, no motion sickness: chevrons pulse only when the user has
+   not asked for reduced motion. Default (no media match) is simply static —
+   each glyph keeps whatever base opacity RouteOverlay.tsx set on it. */
+@keyframes route-glyph-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .route-glyph {
+    animation: route-glyph-pulse 2.6s ease-in-out infinite;
+  }
 }

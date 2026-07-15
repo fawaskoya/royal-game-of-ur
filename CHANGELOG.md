@@ -4,8 +4,14 @@ All notable product changes. Format loosely follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+- **The Store** (renamed from Atelier) — cosmetics wardrobe with live preview: 20 skins across boards/dice/pieces/flair; **one $1.99 purchase unlocks everything sellable, forever** (Excavation Finds stay earned-only). Try-before-you-buy previews for locked skins. Purchases ride the existing Dodo Payments rails: signed webhook (`payment.succeeded`, Standard Webhooks HMAC) is the sole grant authority; return-URL params are never trusted.
+
+- **Pieces now walk their route** — every move travels square-by-square along the actual track (no more straight-line "teleports" that cut diagonally across the board); hovering a move shows breadcrumb dots along its path. Honors reduced-motion.
+- **Tutorial: see the road** — the learner's full route is drawn on the board (directional chevrons, start ring, home marker), with a new intro step explaining the track's shape.
+- **Tutorial: no more missed rolls** — the guide's turns are split into separate narrated beats with a dwell ("The guide rolls a 4… lands on the rosette… rosettes grant another roll… and it's a 3"), directly fixing the pacing confusion reported on Reddit.
+
 - **Donate on homepage** — soft nudge + **Donate** button (mobile + desktop); panel opens Dodo short link `https://dodo.pe/support-ur`; thank-you line after `?donated=1`.
-- Cosmetic board/dice skins (see [docs/MONETIZATION.md](docs/MONETIZATION.md)).
+- **Atelier (dev only, not deployed)** — cosmetics wardrobe: 20 skins across boards/dice/pieces/flair (free Museum Classics + Royal Treasury et al.), equip pipeline via CSS token overrides, dev-grant testing path, Dodo test-mode checkout scaffolding. See [docs/COSMETICS_CATALOG.md](docs/COSMETICS_CATALOG.md) & [docs/COSMETICS_AND_COMMERCE.md](docs/COSMETICS_AND_COMMERCE.md).
 
 ## [0.2.2] — 2026-07-10
 

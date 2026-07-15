@@ -11,6 +11,7 @@ import { Modal } from "./ui/Modal";
 import { HowToPlay } from "./HowToPlay";
 import { TutorialView } from "./TutorialView";
 import { SettingsPanel } from "./SettingsPanel";
+import { AtelierPanel } from "./AtelierPanel";
 import { StatsPanel } from "./StatsPanel";
 import { LeaderboardPanel } from "./LeaderboardPanel";
 import { SupportPanel } from "./SupportPanel";
@@ -178,6 +179,7 @@ export function GameApp() {
   const [boardOpen, setBoardOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [atelierOpen, setAtelierOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [tutorialActive, setTutorialActive] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
@@ -426,6 +428,9 @@ export function GameApp() {
       <button className={["btn rounded-lg text-sm", compact ? "min-h-8 px-2.5 py-1" : "px-4 py-1.5"].join(" ")} onClick={() => setSettingsOpen(true)}>
         Settings
       </button>
+      <button className={["btn rounded-lg text-sm", compact ? "min-h-8 px-2.5 py-1" : "px-4 py-1.5"].join(" ")} onClick={() => setAtelierOpen(true)}>
+        Store
+      </button>
       <button className={["btn rounded-lg text-sm", compact ? "min-h-8 px-2.5 py-1" : "px-4 py-1.5"].join(" ")} onClick={() => fileInputRef.current?.click()}>
         Import
       </button>
@@ -438,6 +443,7 @@ export function GameApp() {
       <LeaderboardPanel open={boardOpen} onClose={() => setBoardOpen(false)} />
       <SupportPanel open={supportOpen} onClose={() => setSupportOpen(false)} />
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <AtelierPanel open={atelierOpen} onClose={() => setAtelierOpen(false)} />
       <ArchivePanel open={archiveOpen} onClose={() => setArchiveOpen(false)} />
       <HowToPlay
         open={guideOpen}

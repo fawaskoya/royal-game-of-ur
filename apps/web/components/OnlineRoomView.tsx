@@ -11,6 +11,7 @@ import {
   type OnlineIdentity,
 } from "@/lib/multiplayer/onlineIdentity";
 import { RoomGameScreen } from "./RoomGameScreen";
+import { OwnFlair } from "./Flair";
 
 /**
  * Private rooms. Two wires behind one screen:
@@ -268,7 +269,7 @@ function IdentityLine({
   if (!editing) {
     return (
       <div className="text-center text-xs text-[var(--ink-dim)]">
-        Playing as <span className="text-[var(--gold)]">{identity.handle}</span>
+        Playing as <span className="text-[var(--gold)]">{identity.handle}</span> <OwnFlair />
         {identity.rating !== null ? <> · rating {identity.rating}</> : null}{" "}
         <button
           className="underline decoration-dotted underline-offset-4 hover:text-[var(--ink)]"

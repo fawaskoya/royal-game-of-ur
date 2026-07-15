@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { ThemeEffect } from "@/components/ThemeEffect";
+import { CosmeticsEffect } from "@/components/CosmeticsEffect";
 
 const SITE_URL = "https://royalgameofur.app";
 const SITE_TITLE = "Royal Game of Ur — Play the World's Oldest Board Game Online";
@@ -85,6 +86,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="antialiased">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA) }} />
         <ThemeEffect />
+        <CosmeticsEffect />
         {children}
         <Analytics />
       </body>

@@ -1,5 +1,54 @@
 # Changelog
 
+## [Unreleased] — 2026-07-15 movement clarity sprint (Reddit feedback)
+
+### Added
+- **Waypoint movement** (`Board.tsx`): moves with span ≥2 animate through every intermediate
+  square via a displayed-cell override walker (HOP_MS 90, hop spring 650/40, base 420/32);
+  entry walks from square 1 after the pool flight lands; bear-off walks a same-layoutId ghost
+  to the last square then departs; guards cancel on history jumps ≠ +1 (undo/scrub/restore),
+  interrupts replace mid-walk, reduced-motion skips entirely; capture victim flights untouched.
+  Hover/hint moves mark intermediate tiles with `.tile-crumb` dots (skin-aware via
+  --rosette-ink).
+- **RouteOverlay** (tutorial): per-cell chevron trail built as a second gap-identical grid
+  (gap-proof vs a stretched SVG), rotation from transposed headings, dashed start ring,
+  doubled exit chevron, shrunken markers on mid-route rosettes, pulse only under
+  prefers-reduced-motion: no-preference. Mounted via Board's new `routeFor` prop; on in
+  TutorialView only.
+- **Tutorial pacing** (`useTutorial.ts`): 21 → 26 beats — road-intro step + all four guide
+  turns split into narrated roll-reveal (1.7s dwell) + move beats; the opening
+  4→rosette→extra-roll→3 sequence is now four labeled beats. Engine-facing action sequence
+  verified identical to the old script (diffed after un-splitting).
+
+### Verification
+Full suite 112/112 (engine 49 / ai 17 / web 46), typecheck clean, 12-cell viewport matrix FIT
+(ran under an equipped cosmetic skin — fit system unaffected by skins). Interactive
+click-through left to the founder per workflow. Not committed/pushed — working tree only.
+
+## [Unreleased] — 2026-07-14 Atelier cosmetics sprint (dev only)
+
+### Added
+- **Cosmetics domain** (`lib/cosmetics/`): locked 20-SKU catalog, fail-closed
+  `resolveLoadout`, versioned `ur:cosmetics` storage + change event, dev grants, Supabase
+  entitlements client (degrades to [] offline), 15 unit tests.
+- **Skins as token packs**: `data-*-skin` attrs on `<html>` (CosmeticsEffect, mirrors
+  ThemeEffect) → `:root[...]` overrides; new indirection tokens `--rosette-ink`,
+  `--die-edge/pip` (+ `--die-face` via var-fallback so the free die keeps its gradients
+  pixel-identical); 11 skin blocks with computed-contrast fixes.
+- **Atelier panel** + menu entry; **Flair** glyphs on identity surfaces (own flair live via
+  storage event; leaderboard skipped — row query carries no flair field by design).
+- **Commerce scaffolding**: `/api/cosmetics/{checkout,verify,dev-grant}` — test-mode-only
+  checkout by price tier (`DODO_COSMETICS_PRODUCT_MAP`), honest-501 verify (Dodo retrieve
+  API unconfirmed), hard-gated dev grants; migration `0007` written, NOT applied.
+- `vitest.config.ts` for `@/` alias (first runtime cross-lib import in tests exposed the gap).
+
+### Process
+- Orchestrated per `docs/FABLE5_COSMETICS_MEGA_PROMPT.md`: waves 0–3 via subagents
+  (contract/task-board/wave-log in `.agent/cosmetics/`), waves 4–5 inline after repeated
+  subagent session-limit kills. No commits/push/production per sprint rules.
+- Known flake noted: one `@ur/ai` strength test is timing-sensitive under parallel suite
+  load (passes in isolation; pre-existing, untouched by this sprint).
+
 ## [Unreleased] — 2026-07-10 homepage attract board + snappy account
 
 ### Fixed
