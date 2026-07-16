@@ -4,6 +4,8 @@ All notable product changes. Format loosely follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+- **Online trust — resign, turn clocks, abandonment forfeit.** Live games now have a **Resign** button (two-tap confirm; counts as a normal rated loss), a **2-minute per-turn clock** shown as a countdown, and — when an opponent's clock runs out — a **"Claim the win"** button. Every ending is server-verified: the clock anchor is the last move's server timestamp, so no client can fake a timeout, and resign/timeout are rated exactly like an on-board finish. No more games stuck forever because someone closed their tab.
+
 - **The Store** (renamed from Atelier) — cosmetics wardrobe with live preview: 20 skins across boards/dice/pieces/flair; **one $1.99 purchase unlocks everything sellable, forever** (Excavation Finds stay earned-only). Try-before-you-buy previews for locked skins. Purchases ride the existing Dodo Payments rails: signed webhook (`payment.succeeded`, Standard Webhooks HMAC) is the sole grant authority; return-URL params are never trusted.
 
 - **Pieces now walk their route** — every move travels square-by-square along the actual track (no more straight-line "teleports" that cut diagonally across the board); hovering a move shows breadcrumb dots along its path. Honors reduced-motion.

@@ -219,6 +219,10 @@ function OnlineFlow({ onExit, onSwitchWire }: { onExit(): void; onSwitchWire(): 
         winNote={winNote}
         rematchLabel={room.rematchOffered ? "Join rematch" : "Rematch"}
         onRematch={room.rematch}
+        ended={room.ended}
+        onResign={room.resign}
+        onClaimTimeout={room.claimTimeout}
+        turnDeadlineMs={room.turnDeadlineMs}
         onLeave={() => {
           room.leave();
           onExit();

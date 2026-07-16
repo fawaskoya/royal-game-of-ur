@@ -1,5 +1,35 @@
 # Changelog
 
+## [Unreleased] — 2026-07-17 online trust (resign · turn clocks · timeout forfeit)
+
+### Added
+- Migration `0008_end_reason.sql`: additive nullable `games.end_reason`
+  (finish|resign|timeout). The event log stays pure engine events
+  (buildStateFromEvents keeps verifying); non-board endings live on the row.
+- Edge function: `endGame(gameId, winner, reason)` one-shot core (status-guarded,
+  exactly-once rating like before) behind both `finalizeIfDecided` and two new
+  actions — `resign` (opponent wins, rated as a loss) and `claim_timeout`
+  (server recomputes elapsed from the last event's `server_ts` vs
+  TURN_TIMEOUT_SECONDS=120; early claims return `remainingSeconds` instead of
+  ending). Verified live: early-claim rejected (119s), resign→784/816, games
+  row correct, double-resign idempotent.
+- Transport: `lastActivityAt` anchor from event `server_ts`, `onGameEnded`
+  signal off the games-row UPDATE (resign/timeout never hit the event log),
+  `resignGame`/`claimTimeout` wrappers, `ONLINE_TURN_TIMEOUT_SECONDS`.
+- `useOnlineRoom`: `ended` (single overlay truth incl. board finish), `resign`,
+  `claimTimeout` (resyncs the countdown from the server on early claim),
+  `turnDeadlineMs`.
+- `RoomGameScreen`: two-step Resign in the header, live turn countdown pill
+  (opponent's clock + a low-time warning on your own), a "claim the win"
+  button when their clock expires, and a reason-aware win overlay
+  ("Your opponent resigned." / "Their turn clock ran out."). Same-device
+  pass-and-play omits all of it (no abandonment there).
+
+### Notes
+- Forfeit is claim-based (opponent must be present to claim), like chess.com —
+  if BOTH players vanish the row simply stays `playing` (harmless; no ratings
+  touched). An automated sweep is a later nice-to-have.
+
 ## [Unreleased] — 2026-07-15 movement clarity sprint (Reddit feedback)
 
 ### Added

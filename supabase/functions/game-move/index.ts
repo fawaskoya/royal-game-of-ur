@@ -32,6 +32,12 @@ import {
 import { commitmentFor, randomSeed } from "../_shared/fairDice.ts";
 import { INITIAL_RATING, applyResult } from "../_shared/rating.ts";
 
+// Per-turn clock for ALL online games (rooms + matches). The opponent may
+// claim a win once the player to act has been silent this long. Keep the
+// client display constant (supabaseTransport.ONLINE_TURN_TIMEOUT_SECONDS)
+// in sync with this value.
+const TURN_TIMEOUT_SECONDS = 120;
+
 const ROOM_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // no 0/O/1/I/L
 const MAX_ROOM_CODE_ATTEMPTS = 10;
 
@@ -85,6 +91,7 @@ interface GameRow {
   status: "waiting" | "playing" | "finished" | "abandoned";
   winner: PlayerId | null;
   rematch_game_id: string | null;
+  started_at: string | null;
 }
 
 Deno.serve(async (req: Request) => {
@@ -132,6 +139,10 @@ Deno.serve(async (req: Request) => {
         );
       case "rematch":
         return jsonResponse(await rematch(admin, uid, String(body.gameId ?? "")));
+      case "resign":
+        return jsonResponse(await resignGame(admin, uid, String(body.gameId ?? "")));
+      case "claim_timeout":
+        return jsonResponse(await claimTimeout(admin, uid, String(body.gameId ?? "")));
       case "enqueue_match":
         return jsonResponse(await enqueueMatch(admin, uid, String(body.pool ?? "casual")));
       case "cancel_match":
@@ -445,7 +456,7 @@ async function joinRoom(admin: AdminClient, uid: string, roomCode: string): Prom
 async function loadGame(admin: AdminClient, gameId: string): Promise<GameRow> {
   const { data, error } = await admin
     .from("games")
-    .select("id, room_code, ruleset, light, dark, status, winner, rematch_game_id")
+    .select("id, room_code, ruleset, light, dark, status, winner, rematch_game_id, started_at")
     .eq("id", gameId)
     .single();
   if (error || !data) throw new Error("game not found");
@@ -475,17 +486,20 @@ async function appendEvents(admin: AdminClient, gameId: string, fromIndex: numbe
   if (error) throw new Error(error.message);
 }
 
-async function finalizeIfDecided(admin: AdminClient, gameId: string, state: GameState): Promise<void> {
-  if (state.winner === null) return;
+type EndReason = "finish" | "resign" | "timeout";
+
+/** One-shot game ending shared by every path (board finish, resignation,
+ * timeout claim). The status guard makes it exactly-once: only the request
+ * that actually flips playing → finished gets rows back, and only that
+ * request applies ratings — retries and races can't double-count. */
+async function endGame(admin: AdminClient, gameId: string, winner: PlayerId, reason: EndReason): Promise<boolean> {
   const { data: secret } = await admin.from("game_secrets").select("seed").eq("game_id", gameId).single();
-  // The status guard makes this a one-shot transition: only the request that
-  // actually flips playing → finished gets rows back, and only that request
-  // applies ratings — retries and races can't double-count a game.
   const { data: transitioned, error } = await admin
     .from("games")
     .update({
       status: "finished",
-      winner: state.winner,
+      winner,
+      end_reason: reason,
       finished_at: new Date().toISOString(),
       seed_revealed: secret ? String(secret.seed) : null,
     })
@@ -494,10 +508,71 @@ async function finalizeIfDecided(admin: AdminClient, gameId: string, state: Game
     .select("light, dark");
   if (error) throw new Error(error.message);
   const row = transitioned?.[0] as { light: string | null; dark: string | null } | undefined;
-  if (!row || !row.light || !row.dark) return;
-  const winnerId = state.winner === 0 ? row.light : row.dark;
-  const loserId = state.winner === 0 ? row.dark : row.light;
+  if (!row || !row.light || !row.dark) return false;
+  const winnerId = winner === 0 ? row.light : row.dark;
+  const loserId = winner === 0 ? row.dark : row.light;
   await applyRatings(admin, winnerId, loserId);
+  return true;
+}
+
+async function finalizeIfDecided(admin: AdminClient, gameId: string, state: GameState): Promise<void> {
+  if (state.winner === null) return;
+  await endGame(admin, gameId, state.winner, "finish");
+}
+
+/** Concede: a seated player hands the win to their opponent. Counts as a
+ * normal rated loss — resigning must never be cheaper than losing. */
+async function resignGame(
+  admin: AdminClient,
+  uid: string,
+  gameId: string,
+): Promise<{ winner: PlayerId; endReason: EndReason }> {
+  const game = await loadGame(admin, gameId);
+  if (game.status !== "playing") throw new Error("game is not in progress");
+  const seat = seatOf(game, uid);
+  if (seat === null) throw new Error("you are not seated in this game");
+  const winner = (seat === 0 ? 1 : 0) as PlayerId;
+  await endGame(admin, gameId, winner, "resign");
+  return { winner, endReason: "resign" };
+}
+
+/** Claim a win on the opponent's expired turn clock. Server-verified: the
+ * clock anchor is the last event's server timestamp (or game start), never
+ * anything the client asserts. Early claims return the remaining seconds so
+ * the client can resync its countdown instead of erroring. */
+async function claimTimeout(
+  admin: AdminClient,
+  uid: string,
+  gameId: string,
+): Promise<{ claimable: boolean; remainingSeconds?: number; winner?: PlayerId; endReason?: EndReason }> {
+  const game = await loadGame(admin, gameId);
+  if (game.status !== "playing") throw new Error("game is not in progress");
+  const seat = seatOf(game, uid);
+  if (seat === null) throw new Error("you are not seated in this game");
+
+  const events = await loadEvents(admin, gameId);
+  const state = buildStateFromEvents(game.ruleset, events);
+  if (state.current === seat) throw new Error("it is your turn — you can only claim on the opponent's clock");
+
+  const { data: lastRow } = await admin
+    .from("game_events")
+    .select("server_ts")
+    .eq("game_id", gameId)
+    .order("seq", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const anchorIso = (lastRow?.server_ts as string | undefined) ?? game.started_at ?? null;
+  const anchor = anchorIso ? new Date(anchorIso).getTime() : Date.now();
+  const elapsed = (Date.now() - anchor) / 1000;
+  const remaining = TURN_TIMEOUT_SECONDS - elapsed;
+  if (remaining > 0) return { claimable: false, remainingSeconds: Math.ceil(remaining) };
+
+  const ended = await endGame(admin, gameId, seat, "timeout");
+  if (!ended) {
+    // Lost a race with the opponent's own move/resign — game already over.
+    throw new Error("the game just ended");
+  }
+  return { claimable: true, winner: seat, endReason: "timeout" };
 }
 
 /** Elo for the casual pool — server-authoritative, applied exactly once per

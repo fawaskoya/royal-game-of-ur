@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#10151f"/>
+      <stop offset="55%" stop-color="#0b0e14"/>
+      <stop offset="100%" stop-color="#1a1610"/>
+    </linearGradient>
+    <linearGradient id="goldtext" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ecd08a"/>
+      <stop offset="50%" stop-color="#c9a24b"/>
+      <stop offset="100%" stop-color="#a07f35"/>
+    </linearGradient>
+    <g id="rosette">
+      <g fill="none" stroke="#c9a24b" stroke-width="1.6">
+        <ellipse cx="100" cy="55" rx="26" ry="48"/>
+        <ellipse cx="100" cy="55" rx="26" ry="48" transform="rotate(45 100 100)"/>
+        <ellipse cx="100" cy="55" rx="26" ry="48" transform="rotate(90 100 100)"/>
+        <ellipse cx="100" cy="55" rx="26" ry="48" transform="rotate(135 100 100)"/>
+        <ellipse cx="100" cy="55" rx="26" ry="48" transform="rotate(180 100 100)"/>
+        <ellipse cx="100" cy="55" rx="26" ry="48" transform="rotate(225 100 100)"/>
+        <ellipse cx="100" cy="55" rx="26" ry="48" transform="rotate(270 100 100)"/>
+        <ellipse cx="100" cy="55" rx="26" ry="48" transform="rotate(315 100 100)"/>
+        <circle cx="100" cy="100" r="12"/>
+      </g>
+    </g>
+  </defs>
+
+  <rect width="1200" height="1200" fill="url(#bg)"/>
+  <!-- giant watermark rosette -->
+  <use href="#rosette" transform="translate(690,-90) scale(4.6)" opacity="0.06"/>
+  <!-- frame -->
+  <rect x="36" y="36" width="1128" height="1128" rx="28" fill="none" stroke="#8a6f3a" stroke-width="3"/>
+  <rect x="52" y="52" width="1096" height="1096" rx="20" fill="none" stroke="#c9a24b" stroke-opacity="0.28" stroke-width="1.5"/>
+
+  <!-- center rosette medallion -->
+  <use href="#rosette" transform="translate(455,120) scale(1.45)" opacity="0.95"/>
+
+  <!-- kicker -->
+  <text x="600" y="470" text-anchor="middle" font-family="Palatino, 'Iowan Old Style', Georgia, serif" font-size="30" letter-spacing="14" fill="#9a927e">ROYAL GAME OF UR</text>
+
+  <!-- title -->
+  <text x="600" y="580" text-anchor="middle" font-family="Palatino, 'Iowan Old Style', Georgia, serif" font-size="92" font-weight="bold" fill="url(#goldtext)">Unlock All</text>
+  <text x="600" y="682" text-anchor="middle" font-family="Palatino, 'Iowan Old Style', Georgia, serif" font-size="92" font-weight="bold" fill="url(#goldtext)">Cosmetics</text>
+
+  <!-- ornament rule -->
+  <line x1="330" y1="740" x2="565" y2="740" stroke="#c9a24b" stroke-opacity="0.5" stroke-width="1.5"/>
+  <text x="600" y="750" text-anchor="middle" font-size="26" fill="#c9a24b" opacity="0.8">✦</text>
+  <line x1="635" y1="740" x2="870" y2="740" stroke="#c9a24b" stroke-opacity="0.5" stroke-width="1.5"/>
+
+  <!-- skin swatch rows: boards / dice / pieces -->
+  <g transform="translate(0,0)">
+    <!-- board skins -->
+    <g transform="translate(340,800)">
+      <rect x="0"   y="0" width="76" height="76" rx="14" fill="#12172c" stroke="#35407a" stroke-width="3"/>
+      <rect x="110" y="0" width="76" height="76" rx="14" fill="#3a2418" stroke="#6b5230" stroke-width="3"/>
+      <rect x="220" y="0" width="76" height="76" rx="14" fill="#0d0f1c" stroke="#454b6e" stroke-width="3"/>
+      <rect x="330" y="0" width="76" height="76" rx="14" fill="#ede2c2" stroke="#b8a374" stroke-width="3"/>
+      <rect x="440" y="0" width="76" height="76" rx="14" fill="#17140f" stroke="#3a352c" stroke-width="3"/>
+    </g>
+    <!-- pieces -->
+    <g transform="translate(340,920)">
+      <circle cx="38"  cy="38" r="36" fill="#f2ecdd" stroke="#3f5cae" stroke-width="4"/>
+      <circle cx="38"  cy="38" r="9" fill="#3f5cae"/>
+      <circle cx="148" cy="38" r="36" fill="#241f1c" stroke="#3f5cae" stroke-width="4"/>
+      <circle cx="148" cy="38" r="14" fill="none" stroke="#3f5cae" stroke-width="4"/>
+      <circle cx="258" cy="38" r="36" fill="#f5ecd8" stroke="#d3b56a" stroke-width="4"/>
+      <circle cx="258" cy="38" r="9" fill="#d3b56a"/>
+      <circle cx="368" cy="38" r="36" fill="#2c2620" stroke="#d3b56a" stroke-width="4"/>
+      <circle cx="368" cy="38" r="14" fill="none" stroke="#d3b56a" stroke-width="4"/>
+      <!-- die -->
+      <g transform="translate(440,0)">
+        <polygon points="38,4 8,72 38,72" fill="#7a2f22" stroke="#c9974a" stroke-width="3"/>
+        <polygon points="38,4 68,72 38,72" fill="#5e2118" stroke="#c9974a" stroke-width="3"/>
+        <circle cx="38" cy="52" r="6" fill="#e8c37a"/>
+      </g>
+    </g>
+  </g>
+
+  <!-- footer -->
+  <text x="600" y="1090" text-anchor="middle" font-family="Palatino, Georgia, serif" font-size="34" fill="#ece5d4">Every board · dice · pieces · flair — yours forever</text>
+  <text x="600" y="1136" text-anchor="middle" font-family="Palatino, Georgia, serif" font-size="28" fill="#9a927e">One-time purchase · Never pay-to-win · royalgameofur.app</text>
+</svg>

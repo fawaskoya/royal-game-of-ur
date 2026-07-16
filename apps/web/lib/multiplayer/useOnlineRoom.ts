@@ -23,7 +23,16 @@ import {
 } from "@ur/engine";
 import type { RoomPlayer } from "@/lib/network/types";
 import type { UseLocalRoomResult } from "./useLocalRoom";
-import { SupabaseRoomTransport, createOnlineRoom, joinOnlineRoom, requestRematch } from "./supabaseTransport";
+import {
+  ONLINE_TURN_TIMEOUT_SECONDS,
+  SupabaseRoomTransport,
+  claimTimeout as claimTimeoutAction,
+  createOnlineRoom,
+  joinOnlineRoom,
+  requestRematch,
+  resignGame,
+  type GameEndedSignal,
+} from "./supabaseTransport";
 import { getSupabaseClient } from "./supabaseClient";
 import type { GameMode } from "@/lib/useGame";
 import { recordResult, resultFromGame } from "@/lib/stats/matchResults";
@@ -40,6 +49,15 @@ export type UseOnlineRoomResult = UseLocalRoomResult & {
   rematch(): void;
   /** Open a matchmade game by id (no invite code). */
   joinGameId(gameId: string, label?: string): void;
+  /** Authoritative game-over signal (covers resign/timeout, which never
+   * appear in the engine event log). Null while the game is live. */
+  ended: GameEndedSignal | null;
+  /** Concede the game (opponent wins, rated as a normal loss). */
+  resign(): void;
+  /** Claim victory on the opponent's expired turn clock. */
+  claimTimeout(): void;
+  /** Epoch ms when the current turn's clock expires (display; server decides). */
+  turnDeadlineMs: number | null;
 };
 
 export function useOnlineRoom(): UseOnlineRoomResult {
@@ -52,6 +70,8 @@ export function useOnlineRoom(): UseOnlineRoomResult {
   const [snapshot, setSnapshot] = useState<{ state: GameState; tail: readonly GameEvent[] } | null>(null);
   const [handles, setHandles] = useState<readonly [string | null, string | null]>([null, null]);
   const [rematchOffered, setRematchOffered] = useState(false);
+  const [ended, setEnded] = useState<GameEndedSignal | null>(null);
+  const [lastActivityAt, setLastActivityAt] = useState<number | null>(null);
 
   const transportRef = useRef<SupabaseRoomTransport | null>(null);
   const gameIdRef = useRef<string | null>(null);
@@ -88,7 +108,10 @@ export function useOnlineRoom(): UseOnlineRoomResult {
         logRef.current.push(next);
         fresh.push(next);
       }
-      if (fresh.length > 0) rebuild(fresh);
+      if (fresh.length > 0) {
+        rebuild(fresh);
+        setLastActivityAt(transportRef.current?.lastActivityAt ?? Date.now());
+      }
       // A stranded future event means we missed something — pull the log.
       if (fresh.length === 0 && pendingRef.current.size > 0) {
         void transportRef.current?.resync().catch(() => undefined);
@@ -136,7 +159,10 @@ export function useOnlineRoom(): UseOnlineRoomResult {
         setPhase((current) => (current === "error" ? current : roster.length >= 2 ? "playing" : "waiting"));
       });
       transport.onRematch(() => setRematchOffered(true));
+      transport.onGameEnded((signal) => setEnded(signal));
       await transport.connect(gameId, "");
+      setEnded(null);
+      setLastActivityAt(transport.lastActivityAt ?? Date.now());
       rulesetRef.current = transport.ruleset;
       setMySeat(transport.mySeat);
       setCode(roomCode);
@@ -214,11 +240,20 @@ export function useOnlineRoom(): UseOnlineRoomResult {
     setActionError(null);
     setHandles([null, null]);
     setRematchOffered(false);
+    setEnded(null);
+    setLastActivityAt(null);
   }, []);
 
   useEffect(() => () => transportRef.current?.disconnect(), []);
 
   const state = snapshot?.state ?? null;
+
+  // A board finish also lands here so the overlay has ONE source of truth.
+  useEffect(() => {
+    if (state?.winner != null) {
+      setEnded((prev) => prev ?? { winner: state.winner as 0 | 1, endReason: "finish" });
+    }
+  }, [state?.winner]);
   const gamePhase = state ? phaseOf(state) : null;
   const myTurn = state !== null && mySeat !== null && state.winner === null && state.current === mySeat;
   const legal = state && myTurn && gamePhase === "awaiting-move" ? legalMoves(state) : [];
@@ -282,6 +317,37 @@ export function useOnlineRoom(): UseOnlineRoomResult {
     [myTurn, gamePhase, act],
   );
 
+  const resign = useCallback(() => {
+    const gameId = gameIdRef.current;
+    if (!gameId || ended) return;
+    act(async () => {
+      const result = await resignGame(gameId);
+      setEnded((prev) => prev ?? result);
+    });
+  }, [act, ended]);
+
+  const claimTimeout = useCallback(() => {
+    const gameId = gameIdRef.current;
+    if (!gameId || ended) return;
+    act(async () => {
+      const result = await claimTimeoutAction(gameId);
+      if (!result.claimable) {
+        setActionError(`Not yet — ${result.remainingSeconds ?? "?"}s on their clock (synced).`);
+        // Trust the server's clock over ours: pull the countdown back.
+        setLastActivityAt(Date.now() - (ONLINE_TURN_TIMEOUT_SECONDS - (result.remainingSeconds ?? 0)) * 1000);
+        return;
+      }
+      if (result.winner !== undefined && result.endReason) {
+        setEnded((prev) => prev ?? { winner: result.winner!, endReason: result.endReason! });
+      }
+    });
+  }, [act, ended]);
+
+  const turnDeadlineMs =
+    phase === "playing" && !ended && lastActivityAt !== null
+      ? lastActivityAt + ONLINE_TURN_TIMEOUT_SECONDS * 1000
+      : null;
+
   return {
     phase,
     code,
@@ -304,5 +370,9 @@ export function useOnlineRoom(): UseOnlineRoomResult {
     leave,
     roll,
     movePiece,
+    ended,
+    resign,
+    claimTimeout,
+    turnDeadlineMs,
   };
 }

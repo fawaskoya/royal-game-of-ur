@@ -22,6 +22,16 @@ import type {
 } from "@/lib/network/types";
 import { ensureSession, getSupabaseClient } from "./supabaseClient";
 
+/** Mirror of the server's TURN_TIMEOUT_SECONDS (game-move edge function) —
+ * display/countdown only; the server clock is the authority on claims. */
+export const ONLINE_TURN_TIMEOUT_SECONDS = 120;
+
+export type GameEndReason = "finish" | "resign" | "timeout";
+export interface GameEndedSignal {
+  winner: PlayerId;
+  endReason: GameEndReason;
+}
+
 interface GameRow {
   id: string;
   room_code: string | null;
@@ -30,6 +40,8 @@ interface GameRow {
   dark: string | null;
   status: "waiting" | "playing" | "finished" | "abandoned";
   rematch_game_id?: string | null;
+  winner?: PlayerId | null;
+  end_reason?: GameEndReason | null;
 }
 
 export async function invokeGameAction<T>(action: string, payload: Record<string, unknown>, token: string): Promise<T> {
@@ -78,6 +90,11 @@ export class SupabaseRoomTransport implements MultiplayerTransport {
   #playerCbs = new Set<(players: readonly RoomPlayer[]) => void>();
   #statusCbs = new Set<(status: TransportStatus) => void>();
   #rematchCbs = new Set<(nextGameId: string) => void>();
+  #endedCbs = new Set<(signal: GameEndedSignal) => void>();
+
+  /** Epoch ms of the newest server-stamped activity (event insert), or game
+   * start on connect — the client-side anchor for the turn countdown. */
+  lastActivityAt: number | null = null;
   #channel: ReturnType<NonNullable<ReturnType<typeof getSupabaseClient>>["channel"]> | null = null;
 
   /** Set once `connect()` resolves — the room hook reads these, mirroring
@@ -128,7 +145,8 @@ export class SupabaseRoomTransport implements MultiplayerTransport {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "game_events", filter: `game_id=eq.${gameId}` },
         (payload) => {
-          const row = payload.new as { seq: number; event: GameEvent };
+          const row = payload.new as { seq: number; event: GameEvent; server_ts?: string };
+          if (row.server_ts) this.lastActivityAt = new Date(row.server_ts).getTime();
           this.#emitBatch(row.seq, [row.event]);
         },
       )
@@ -141,6 +159,12 @@ export class SupabaseRoomTransport implements MultiplayerTransport {
           // A rematch pointer appearing on the finished game IS the offer
           // notification — no separate channel needed.
           if (row.rematch_game_id) for (const cb of this.#rematchCbs) cb(row.rematch_game_id);
+          // Resign/timeout endings never appear in the event log (it stays
+          // pure engine events) — the games row is how clients learn.
+          if (row.status === "finished" && row.winner !== null && row.winner !== undefined) {
+            const signal: GameEndedSignal = { winner: row.winner, endReason: row.end_reason ?? "finish" };
+            for (const cb of this.#endedCbs) cb(signal);
+          }
         },
       )
       .subscribe();
@@ -156,11 +180,15 @@ export class SupabaseRoomTransport implements MultiplayerTransport {
     if (!supabase || !this.#gameId) return;
     const { data, error } = await supabase
       .from("game_events")
-      .select("seq, event")
+      .select("seq, event, server_ts")
       .eq("game_id", this.#gameId)
       .order("seq", { ascending: true });
     if (error) throw new Error(error.message);
-    this.#emitBatch(0, (data ?? []).map((row) => row.event as GameEvent));
+    const rows = data ?? [];
+    const last = rows[rows.length - 1] as { server_ts?: string } | undefined;
+    if (last?.server_ts) this.lastActivityAt = new Date(last.server_ts).getTime();
+    else if (this.lastActivityAt === null) this.lastActivityAt = Date.now();
+    this.#emitBatch(0, rows.map((row) => row.event as GameEvent));
   }
 
   #emitPlayers(game: GameRow): void {
@@ -215,6 +243,27 @@ export class SupabaseRoomTransport implements MultiplayerTransport {
     this.#rematchCbs.add(cb);
     return () => this.#rematchCbs.delete(cb);
   }
+
+  /** Fires when the games row reports the game over (finish, resign, or
+   * timeout) — the authoritative end signal for non-board endings. */
+  onGameEnded(cb: (signal: GameEndedSignal) => void): () => void {
+    this.#endedCbs.add(cb);
+    return () => this.#endedCbs.delete(cb);
+  }
+}
+
+/** Concede the game; the opponent wins (rated like any loss). */
+export async function resignGame(gameId: string): Promise<{ winner: PlayerId; endReason: GameEndReason }> {
+  const token = await ensureSession();
+  return invoke("resign", { gameId }, token);
+}
+
+/** Claim victory on the opponent's expired turn clock (server-verified). */
+export async function claimTimeout(
+  gameId: string,
+): Promise<{ claimable: boolean; remainingSeconds?: number; winner?: PlayerId; endReason?: GameEndReason }> {
+  const token = await ensureSession();
+  return invoke("claim_timeout", { gameId }, token);
 }
 
 /** Ask the server for (or find) the rematch successor of a finished game. */
