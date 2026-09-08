@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { RejoinCard } from "./RejoinCard";
 import { useLocalRoom } from "@/lib/multiplayer/useLocalRoom";
 import { useOnlineRoom } from "@/lib/multiplayer/useOnlineRoom";
 import { isOnlineConfigured } from "@/lib/multiplayer/supabaseClient";
@@ -43,6 +44,7 @@ function Lobby({
   switchLabel,
   onSwitchWire,
   onExit,
+  rejoinSlot,
   identity,
   onIdentityChange,
 }: {
@@ -57,6 +59,8 @@ function Lobby({
   switchLabel?: string;
   onSwitchWire?: () => void;
   onExit(): void;
+  /** Rejoin affordance; the same-device wire has nothing to recover. */
+  rejoinSlot?: React.ReactNode;
   identity?: OnlineIdentity | null;
   onIdentityChange?: (next: OnlineIdentity) => void;
 }) {
@@ -74,6 +78,7 @@ function Lobby({
 
       {room.phase === "idle" ? (
         <div className="flex flex-col gap-3">
+          {rejoinSlot}
           <button className="card btn w-full rounded-xl px-4 py-3 text-left" onClick={room.host}>
             <div className="font-display">{hostLabel}</div>
             <div className="mt-0.5 text-xs text-[var(--ink-dim)]">{hostBlurb}</div>
@@ -243,6 +248,7 @@ function OnlineFlow({ onExit, onSwitchWire }: { onExit(): void; onSwitchWire(): 
       hostLabel="Create a private room"
       hostBlurb="You play Light and share a 4-letter code."
       room={room}
+      rejoinSlot={<RejoinCard onRejoin={(g) => room.joinGameId(g.gameId, g.code ?? "MATCH")} />}
       joinCode={joinCode}
       setJoinCode={setJoinCode}
       waitingCopy="They can join from any device at this site."

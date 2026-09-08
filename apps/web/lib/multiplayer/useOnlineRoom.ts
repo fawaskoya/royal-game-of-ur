@@ -34,6 +34,7 @@ import {
   type GameEndedSignal,
 } from "./supabaseTransport";
 import { getSupabaseClient } from "./supabaseClient";
+import { forgetActiveGame, rememberActiveGame } from "./activeGame";
 import type { GameMode } from "@/lib/useGame";
 import { recordResult, resultFromGame } from "@/lib/stats/matchResults";
 import { archiveGame } from "@/lib/archive";
@@ -131,10 +132,16 @@ export function useOnlineRoom(): UseOnlineRoomResult {
         logRef.current.push(next);
         fresh.push(next);
       }
-      if (fresh.length > 0) {
-        rebuild(fresh);
-        setLastActivityAt(transportRef.current?.lastActivityAt ?? Date.now());
-      }
+      if (fresh.length > 0) rebuild(fresh);
+      // Outside the `fresh` guard on purpose. Your own roll/move arrives
+      // twice — first as the function's response (which carries no
+      // server_ts), then as the Realtime echo, by which point the seq is
+      // already in the log and `fresh` is empty. Anchoring only on fresh
+      // events meant your own turn never advanced your own clock, so a
+      // roll-then-move turn showed one 120s budget instead of 120s per
+      // event, and a rosette chain never reset at all.
+      const anchor = transportRef.current?.lastActivityAt ?? null;
+      if (anchor !== null) setLastActivityAt(anchor);
       // A stranded future event means we missed something — pull the log.
       if (fresh.length === 0 && pendingRef.current.size > 0) {
         void transportRef.current?.resync().catch(() => undefined);
@@ -179,6 +186,10 @@ export function useOnlineRoom(): UseOnlineRoomResult {
       transport.onPlayersChanged((roster) => {
         setPlayers(roster);
         resolveHandles(roster);
+        // The guest joining is what stamps started_at; re-read the anchor so
+        // a host who waited in the lobby doesn't begin on a dead clock.
+        const anchor = transportRef.current?.lastActivityAt ?? null;
+        if (anchor !== null) setLastActivityAt(anchor);
         setPhase((current) => (current === "error" ? current : roster.length >= 2 ? "playing" : "waiting"));
       });
       transport.onRematch(() => setRematchOffered(true));
@@ -189,6 +200,9 @@ export function useOnlineRoom(): UseOnlineRoomResult {
       rulesetRef.current = transport.ruleset;
       setMySeat(transport.mySeat);
       setCode(roomCode);
+      // The breadcrumb a reload follows back into this game. Matchmade games
+      // have no room code, so the id is the only handle that survives.
+      rememberActiveGame(gameId, roomCode || null);
       rebuild([]);
     },
     [ingest, rebuild, resolveHandles],
@@ -268,6 +282,7 @@ export function useOnlineRoom(): UseOnlineRoomResult {
         durationMs: Number.isFinite(started) ? Math.max(0, Date.now() - started) : 0,
       });
     }
+    forgetActiveGame();
     transportRef.current?.disconnect();
     transportRef.current = null;
     gameIdRef.current = null;
@@ -335,6 +350,11 @@ export function useOnlineRoom(): UseOnlineRoomResult {
 
   // `ended` is the single game-over source (board finish, resign, timeout),
   // so completion rides it rather than the engine winner alone.
+  // A finished game is nothing to come back to.
+  useEffect(() => {
+    if (ended) forgetActiveGame();
+  }, [ended]);
+
   useEffect(() => {
     const gameId = gameIdRef.current;
     if (!ended || !gameId || mySeat === null) return;

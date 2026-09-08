@@ -39,6 +39,7 @@ interface GameRow {
   light: string | null;
   dark: string | null;
   status: "waiting" | "playing" | "finished" | "abandoned";
+  started_at?: string | null;
   rematch_game_id?: string | null;
   winner?: PlayerId | null;
   end_reason?: GameEndReason | null;
@@ -92,9 +93,35 @@ export class SupabaseRoomTransport implements MultiplayerTransport {
   #rematchCbs = new Set<(nextGameId: string) => void>();
   #endedCbs = new Set<(signal: GameEndedSignal) => void>();
 
-  /** Epoch ms of the newest server-stamped activity (event insert), or game
-   * start on connect — the client-side anchor for the turn countdown. */
-  lastActivityAt: number | null = null;
+  /* ── Turn-clock anchor ────────────────────────────────────────────────
+   * Mirrors the server's own rule in claim_timeout(): the newest event's
+   * server_ts, falling back to the game's started_at. Kept as three separate
+   * sources rather than one mutable field so a late-arriving `games` UPDATE
+   * can never clobber a newer event timestamp, and so a host who sat in the
+   * lobby for ten minutes doesn't start the game with an already-dead clock.
+   */
+  #lastEventTs: number | null = null;
+  #startedAt: number | null = null;
+  #connectedAt: number | null = null;
+
+  /** Epoch ms the current turn's countdown runs from. */
+  get lastActivityAt(): number | null {
+    return this.#lastEventTs ?? this.#startedAt ?? this.#connectedAt;
+  }
+
+  /** Newest wins — batches and the Realtime echo can arrive out of order. */
+  #noteEventTs(iso: string | undefined): void {
+    if (!iso) return;
+    const ms = Date.parse(iso);
+    if (!Number.isFinite(ms)) return;
+    if (this.#lastEventTs === null || ms > this.#lastEventTs) this.#lastEventTs = ms;
+  }
+
+  #noteStartedAt(iso: string | null | undefined): void {
+    if (!iso) return;
+    const ms = Date.parse(iso);
+    if (Number.isFinite(ms)) this.#startedAt = ms;
+  }
   #channel: ReturnType<NonNullable<ReturnType<typeof getSupabaseClient>>["channel"]> | null = null;
 
   /** Set once `connect()` resolves — the room hook reads these, mirroring
@@ -126,13 +153,15 @@ export class SupabaseRoomTransport implements MultiplayerTransport {
 
     const { data: game, error } = await supabase
       .from("games")
-      .select("id, room_code, ruleset, light, dark, status")
+      .select("id, room_code, ruleset, light, dark, status, started_at")
       .eq("id", gameId)
       .single<GameRow>();
     if (error || !game) {
       this.#setStatus("closed");
       throw new Error("room not found");
     }
+    this.#connectedAt = Date.now();
+    this.#noteStartedAt(game.started_at);
     this.ruleset = game.ruleset;
     this.mySeat = user && game.light === user.id ? 0 : user && game.dark === user.id ? 1 : null;
     this.#emitPlayers(game);
@@ -146,7 +175,7 @@ export class SupabaseRoomTransport implements MultiplayerTransport {
         { event: "INSERT", schema: "public", table: "game_events", filter: `game_id=eq.${gameId}` },
         (payload) => {
           const row = payload.new as { seq: number; event: GameEvent; server_ts?: string };
-          if (row.server_ts) this.lastActivityAt = new Date(row.server_ts).getTime();
+          this.#noteEventTs(row.server_ts);
           this.#emitBatch(row.seq, [row.event]);
         },
       )
@@ -155,6 +184,9 @@ export class SupabaseRoomTransport implements MultiplayerTransport {
         { event: "UPDATE", schema: "public", table: "games", filter: `id=eq.${gameId}` },
         (payload) => {
           const row = payload.new as GameRow;
+          // The guest joining stamps started_at; without picking it up here
+          // the host's clock would still be anchored to room creation.
+          this.#noteStartedAt(row.started_at);
           this.#emitPlayers(row);
           // A rematch pointer appearing on the finished game IS the offer
           // notification — no separate channel needed.
@@ -186,8 +218,7 @@ export class SupabaseRoomTransport implements MultiplayerTransport {
     if (error) throw new Error(error.message);
     const rows = data ?? [];
     const last = rows[rows.length - 1] as { server_ts?: string } | undefined;
-    if (last?.server_ts) this.lastActivityAt = new Date(last.server_ts).getTime();
-    else if (this.lastActivityAt === null) this.lastActivityAt = Date.now();
+    this.#noteEventTs(last?.server_ts);
     this.#emitBatch(0, rows.map((row) => row.event as GameEvent));
   }
 

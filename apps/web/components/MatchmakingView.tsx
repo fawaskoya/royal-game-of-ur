@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getAuthSnapshot, getCachedSnapshot, type AuthSnapshot } from "@/lib/multiplayer/auth";
 import { cancelMatch, enqueueMatch, pollMatch } from "@/lib/multiplayer/matchmaking";
 import { useOnlineRoom } from "@/lib/multiplayer/useOnlineRoom";
+import { RejoinCard } from "./RejoinCard";
 import { isOnlineConfigured } from "@/lib/multiplayer/supabaseClient";
 import { AuthPanel } from "./AuthPanel";
 import { RoomGameScreen } from "./RoomGameScreen";
@@ -216,6 +217,8 @@ export function MatchmakingView({ onExit }: { onExit(): void }) {
       </header>
 
       <AuthPanel auth={auth} onAuthChange={setAuth} loading={authLoading} />
+
+      {searching ? null : <RejoinCard onRejoin={(g) => room.joinGameId(g.gameId, g.code ?? "LIVE")} />}
 
       {searching ? (
         <div className="card flex flex-col items-center gap-4 rounded-xl p-6 text-center">

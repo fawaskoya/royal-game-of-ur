@@ -430,6 +430,18 @@ async function tryPairMatch(
   return gameId;
 }
 
+/**
+ * Resolve a room code to a game — for a new opponent taking the empty seat,
+ * OR for a player who is already seated coming back.
+ *
+ * The rejoin case matters: `room_code` is never cleared, so the code stays a
+ * stable handle on the game, and a player who refreshed (or whose mobile
+ * browser evicted the tab) has no other way back in — the client keeps no
+ * record of the game id. Without this they were locked out of a game that
+ * was still perfectly alive server-side, and lost it on the turn clock.
+ * Returning the existing game is safe: seats are already assigned, so this
+ * grants nothing a rejoining player didn't already have.
+ */
 async function joinRoom(admin: AdminClient, uid: string, roomCode: string): Promise<{ gameId: string }> {
   if (!/^[A-Z2-9]{4}$/.test(roomCode)) throw new Error("room codes are 4 letters");
   await ensureProfile(admin, uid);
@@ -438,10 +450,18 @@ async function joinRoom(admin: AdminClient, uid: string, roomCode: string): Prom
     .from("games")
     .select("id, light, dark, status")
     .eq("room_code", roomCode)
-    .eq("status", "waiting")
-    .single();
-  if (error || !game) throw new Error("room not found or already full");
-  if (game.light === uid) throw new Error("you already created this room");
+    .maybeSingle();
+  if (error || !game) throw new Error("room not found");
+
+  // Already seated here — this is a reconnect, not a join.
+  if (game.light === uid || game.dark === uid) {
+    if (game.status === "finished" || game.status === "abandoned") {
+      throw new Error("that game has already finished");
+    }
+    return { gameId: game.id as string };
+  }
+
+  if (game.status !== "waiting") throw new Error("room not found or already full");
 
   const { error: updateError } = await admin
     .from("games")
