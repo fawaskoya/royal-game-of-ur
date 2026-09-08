@@ -190,7 +190,16 @@ export function GameView({
     <MotionConfig reducedMotion={settings.motion === "reduced" ? "always" : "user"}>
       <div className="game-screen mx-auto w-full max-w-3xl gap-2 px-2 py-2 sm:gap-3 sm:px-3 sm:py-4 lg:max-w-6xl lg:gap-4 lg:py-6">
         <header className="game-header flex shrink-0 items-center justify-between">
-          <button className="btn rounded-lg px-3 py-1.5 text-sm" onClick={onExit}>
+          <button
+            className="btn rounded-lg px-3 py-1.5 text-sm"
+            onClick={() => {
+              // Walking out on a live game is an abandonment; a decided one
+              // has already reported its result, and the guard inside makes
+              // this a no-op there (the win overlay's Menu button included).
+              game.reportAbandoned();
+              onExit();
+            }}
+          >
             ‹ Menu
           </button>
           <h1 className="font-display text-lg tracking-wide text-[var(--gold)] sm:text-xl">Royal Game of Ur</h1>

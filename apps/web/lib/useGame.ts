@@ -23,6 +23,7 @@ import { clearGame, saveGame } from "@/lib/persistence/gameStorage";
 import { CURRENT_SAVE_VERSION, type SavedGame } from "@/lib/persistence/saveSchema";
 import { archiveGame } from "@/lib/archive";
 import { recordResult, resultFromGame } from "@/lib/stats/matchResults";
+import { analyticsMode, sideOf, trackFirstRoll, trackGameComplete, trackGameStart } from "@/lib/analytics";
 
 export type GameMode =
   | { kind: "pvp" }
@@ -73,6 +74,8 @@ export interface UseGameResult {
   movePiece(move: Move): void;
   undo(): void;
   newGame(): void;
+  /** Report a live game as abandoned (analytics only; no state change). */
+  reportAbandoned(): void;
 }
 
 interface Snapshot {
@@ -148,8 +151,12 @@ export function useGame(mode: GameMode, resume?: SavedGame): UseGameResult {
   const roll = useCallback(() => {
     if (!humanActsNow()) return;
     if (phaseOf(sessionRef.current!.state) !== "awaiting-roll") return;
+    // Only human seats reach here (the AI driver calls the session directly),
+    // so watch mode never counts as engagement. The once-per-session guard
+    // lives in the analytics module.
+    trackFirstRoll(analyticsMode(mode));
     commit((session) => session.roll());
-  }, [commit, humanActsNow]);
+  }, [commit, humanActsNow, mode]);
 
   const movePiece = useCallback(
     (move: Move) => {
@@ -167,13 +174,60 @@ export function useGame(mode: GameMode, resume?: SavedGame): UseGameResult {
     else commit((session) => session.undo());
   }, [commit, mode]);
 
+  // Analytics outcome guard — `game_complete` fires at most once per game,
+  // whether the game was won or walked away from. Declared before the
+  // reporters below so both share it.
+  const outcomeRef = useRef<string | null>(null);
+
+  /**
+   * Report a started-but-unfinished game as abandoned. Called from the
+   * reliable in-app exits (Menu, New game) rather than from
+   * `visibilitychange`, which fires on every tab switch and phone lock and
+   * would drown the signal. An untouched or already-decided game is not an
+   * abandonment, and the shared guard means a win can never also report here.
+   */
+  const reportAbandoned = useCallback(() => {
+    const current = sessionRef.current!.state;
+    const meta = metaRef.current!;
+    if (current.winner !== null || current.history.length === 0) return;
+    if (outcomeRef.current === meta.gameId) return;
+    outcomeRef.current = meta.gameId;
+    const started = new Date(meta.startedAt).getTime();
+    trackGameComplete({
+      mode: analyticsMode(mode),
+      result: "abandoned",
+      difficulty: mode.kind === "ai" ? mode.difficulty : null,
+      turns: current.rollCount,
+      durationMs: Number.isFinite(started) ? Math.max(0, Date.now() - started) : 0,
+    });
+  }, [mode]);
+
   const newGame = useCallback(() => {
+    reportAbandoned();
     sessionRef.current = new GameSession({});
     metaRef.current = freshMeta();
     restoredRef.current = false;
     clearGame();
     setSnapshot({ state: sessionRef.current.state, tail: [] });
-  }, []);
+  }, [reportAbandoned]);
+
+  // One `game_start` per game, fired once the board is live rather than
+  // when a mode is picked. A resumed game already reported its start when
+  // it began, so restores stay silent instead of double-counting one game.
+  const startedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const meta = metaRef.current!;
+    if (startedRef.current === meta.gameId) return;
+    startedRef.current = meta.gameId;
+    if (restoredRef.current) return;
+    trackGameStart({
+      mode: analyticsMode(mode),
+      // Watch mode has two engines and the property holds one string, so it
+      // reports null rather than inventing a combined value.
+      difficulty: mode.kind === "ai" ? mode.difficulty : null,
+      side: mode.kind === "ai" ? sideOf(mode.human) : null,
+    });
+  }, [mode, state]);
 
   // Finished games become a MatchResult (stats) and an archived replay,
   // exactly once per game.
@@ -187,6 +241,19 @@ export function useGame(mode: GameMode, resume?: SavedGame): UseGameResult {
       recordResult(result);
       archiveGame(state, mode, meta.gameId);
       recordedRef.current = meta.gameId;
+      if (outcomeRef.current !== meta.gameId) {
+        outcomeRef.current = meta.gameId;
+        trackGameComplete({
+          mode: analyticsMode(mode),
+          // Only vs-AI has a single human seat to win or lose; pass-and-play
+          // has two and spectate has none, so those report `finished`.
+          result:
+            mode.kind === "ai" ? (state.winner === mode.human ? "win" : "loss") : "finished",
+          difficulty: mode.kind === "ai" ? mode.difficulty : null,
+          turns: result.turns,
+          durationMs: result.durationMs,
+        });
+      }
     }
   }, [state, mode]);
 
@@ -256,5 +323,6 @@ export function useGame(mode: GameMode, resume?: SavedGame): UseGameResult {
     movePiece,
     undo,
     newGame,
+    reportAbandoned,
   };
 }
