@@ -12,6 +12,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  applyMove,
   buildStateFromEvents,
   createGame,
   legalMoves,
@@ -68,6 +69,12 @@ export type UseOnlineRoomResult = UseLocalRoomResult & {
   claimTimeout(): void;
   /** Epoch ms when the current turn's clock expires (display; server decides). */
   turnDeadlineMs: number | null;
+  /** A throw is in flight — the dice are still in the air. */
+  rolling: boolean;
+  /** An action is awaiting the server. Optimistic rendering can hand the
+   * turn straight back (a rosette), so input is gated on this rather than
+   * letting the next click fall into a stale request. */
+  busy: boolean;
 };
 
 export function useOnlineRoom(): UseOnlineRoomResult {
@@ -82,6 +89,8 @@ export function useOnlineRoom(): UseOnlineRoomResult {
   const [rematchOffered, setRematchOffered] = useState(false);
   const [ended, setEnded] = useState<GameEndedSignal | null>(null);
   const [lastActivityAt, setLastActivityAt] = useState<number | null>(null);
+  const [rolling, setRolling] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const transportRef = useRef<SupabaseRoomTransport | null>(null);
   const gameIdRef = useRef<string | null>(null);
@@ -89,6 +98,13 @@ export function useOnlineRoom(): UseOnlineRoomResult {
   const pendingRef = useRef<Map<number, GameEvent>>(new Map());
   const rulesetRef = useRef<RulesetConfig | null>(null);
   const busyRef = useRef(false);
+  /**
+   * Events this client has already drawn ahead of the server's confirmation.
+   * The verified log (`logRef`) is never touched by prediction — this only
+   * records which incoming events have already been animated, so the
+   * authoritative rebuild doesn't play the same move a second time.
+   */
+  const optimisticRef = useRef<{ fromIndex: number; count: number } | null>(null);
   const startedAtRef = useRef<string>(new Date().toISOString());
   const recordedRef = useRef<string | null>(null);
 
@@ -132,7 +148,21 @@ export function useOnlineRoom(): UseOnlineRoomResult {
         logRef.current.push(next);
         fresh.push(next);
       }
-      if (fresh.length > 0) rebuild(fresh);
+      if (fresh.length > 0) {
+        const optimistic = optimisticRef.current;
+        let tail = fresh;
+        if (optimistic) {
+          // Suppress the prefix we already drew optimistically; the state
+          // itself is still rebuilt from the authoritative log below.
+          const before = logRef.current.length - fresh.length;
+          const shown = optimistic.fromIndex + optimistic.count - before;
+          tail = fresh.slice(Math.max(0, Math.min(fresh.length, shown)));
+          if (logRef.current.length >= optimistic.fromIndex + optimistic.count) {
+            optimisticRef.current = null;
+          }
+        }
+        rebuild(tail);
+      }
       // Outside the `fresh` guard on purpose. Your own roll/move arrives
       // twice — first as the function's response (which carries no
       // server_ts), then as the Realtime echo, by which point the seq is
@@ -317,24 +347,37 @@ export function useOnlineRoom(): UseOnlineRoomResult {
   const myTurn = state !== null && mySeat !== null && state.winner === null && state.current === mySeat;
   const legal = state && myTurn && gamePhase === "awaiting-move" ? legalMoves(state) : [];
 
-  const act = useCallback((action: () => Promise<void>) => {
+  const act = useCallback((action: () => Promise<void>, onError?: () => void) => {
     // One in-flight action at a time; server-side staleness checks make
     // double-sends harmless, this just avoids noisy duplicate errors.
     if (busyRef.current) return;
     busyRef.current = true;
+    setBusy(true);
     setActionError(null);
     void action()
-      .catch((err) => setActionError(err instanceof Error ? err.message : "action failed"))
+      .catch((err) => {
+        setActionError(err instanceof Error ? err.message : "action failed");
+        onError?.();
+      })
       .finally(() => {
         busyRef.current = false;
+        setBusy(false);
       });
   }, []);
 
   const roll = useCallback(() => {
-    if (!myTurn || gamePhase !== "awaiting-roll" || !gameIdRef.current) return;
+    if (!myTurn || gamePhase !== "awaiting-roll" || !gameIdRef.current || busyRef.current) return;
     const gameId = gameIdRef.current;
     trackFirstRoll(surfaceRef.current);
-    act(() => transportRef.current!.requestRoll(gameId, logRef.current.length));
+    // The dice can't be predicted — the server holds the seed — but the
+    // throw can start now and settle on the response, so the round trip
+    // happens behind an animation instead of behind a frozen tray.
+    setRolling(true);
+    act(() =>
+      transportRef
+        .current!.requestRoll(gameId, logRef.current.length)
+        .finally(() => setRolling(false)),
+    );
   }, [myTurn, gamePhase, act]);
 
   // The board is live once both seats are filled — that, not entering the
@@ -396,20 +439,55 @@ export function useOnlineRoom(): UseOnlineRoomResult {
     });
   }, [act, attach, code]);
 
+  /** Drop a prediction and fall back to the verified log (no re-animation). */
+  const rollbackOptimistic = useCallback(() => {
+    if (!optimisticRef.current) return;
+    optimisticRef.current = null;
+    rebuild([]);
+  }, [rebuild]);
+
   const movePiece = useCallback(
     (move: Move) => {
-      if (!myTurn || gamePhase !== "awaiting-move" || !gameIdRef.current) return;
+      if (!myTurn || gamePhase !== "awaiting-move" || !gameIdRef.current || busyRef.current) return;
       const gameId = gameIdRef.current;
-      act(() =>
-        transportRef.current!.sendMove({
-          roomId: gameId,
-          gameId,
-          afterEvent: logRef.current.length,
-          move,
-        }),
+      const afterEvent = logRef.current.length;
+
+      /*
+       * Draw the move immediately instead of waiting out the round trip.
+       *
+       * This grants the client no authority it didn't already have: the
+       * engine is deterministic, and this client rebuilt the position from
+       * the same verified log the server holds, so the result of a legal move
+       * is already computable here. The server still validates and its events
+       * still replace this the moment they land — a prediction that turns out
+       * wrong is corrected by the rebuild, or by the rollback below. The
+       * verified log is never written from here.
+       */
+      if (state) {
+        try {
+          const predicted = applyMove(state, move);
+          const drawn = predicted.history.slice(afterEvent);
+          optimisticRef.current = { fromIndex: afterEvent, count: drawn.length };
+          setSnapshot({ state: predicted, tail: drawn });
+        } catch {
+          // The engine refused it — send anyway and let the server's error
+          // be the one the player sees.
+          optimisticRef.current = null;
+        }
+      }
+
+      act(
+        () =>
+          transportRef.current!.sendMove({
+            roomId: gameId,
+            gameId,
+            afterEvent,
+            move,
+          }),
+        rollbackOptimistic,
       );
     },
-    [myTurn, gamePhase, act],
+    [myTurn, gamePhase, act, state, rollbackOptimistic],
   );
 
   const resign = useCallback(() => {
@@ -469,5 +547,7 @@ export function useOnlineRoom(): UseOnlineRoomResult {
     resign,
     claimTimeout,
     turnDeadlineMs,
+    rolling,
+    busy,
   };
 }

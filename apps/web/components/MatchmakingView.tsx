@@ -178,6 +178,8 @@ export function MatchmakingView({ onExit }: { onExit(): void }) {
         onResign={room.resign}
         onClaimTimeout={room.claimTimeout}
         turnDeadlineMs={room.turnDeadlineMs}
+        rolling={room.rolling}
+        busy={room.busy}
         onLeave={() => {
           room.leave();
           onExit();

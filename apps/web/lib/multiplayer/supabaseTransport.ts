@@ -49,6 +49,30 @@ export async function invokeGameAction<T>(action: string, payload: Record<string
   return invoke<T>(action, payload, token);
 }
 
+let prewarmed = false;
+
+/**
+ * Wake the edge function before the player's first real action.
+ *
+ * A cold isolate adds a second or more to whatever request happens to hit it
+ * first — which, unwarmed, is always a create/join. Firing a cheap `whoami`
+ * the moment intent shows (opening a lobby) moves that cost off the critical
+ * path. Fire-and-forget by design: if it fails, the real action just pays
+ * what it would have paid anyway.
+ */
+export function prewarmGameServer(): void {
+  if (prewarmed) return;
+  prewarmed = true;
+  void (async () => {
+    try {
+      const token = await ensureSession();
+      await invoke("whoami", {}, token);
+    } catch {
+      prewarmed = false; // let a later attempt try again
+    }
+  })();
+}
+
 async function invoke<T>(action: string, payload: Record<string, unknown>, token: string): Promise<T> {
   const supabase = getSupabaseClient();
   if (!supabase) throw new Error("online play is not configured");

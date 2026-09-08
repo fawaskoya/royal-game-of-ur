@@ -38,6 +38,16 @@ export function DieGradients() {
 
 /** A simple two-face pyramid silhouette — a tasteful, legible stand-in for a
  * tetrahedral die (true 3D pip layout isn't worth the complexity at this size). */
+function DieFace({ value }: { value: 0 | 1 | null }) {
+  return (
+    <svg viewBox="0 0 40 40" className="h-full w-full drop-shadow-sm">
+      <polygon points="20,4 6,36 20,36" fill="var(--die-face, url(#dieFaceLight))" stroke="var(--die-edge)" strokeWidth="1.4" strokeLinejoin="round" />
+      <polygon points="20,4 34,36 20,36" fill="var(--die-face, url(#dieFaceDark))" stroke="var(--die-edge)" strokeWidth="1.4" strokeLinejoin="round" />
+      {value === 1 ? <circle cx="20" cy="26" r="2.8" fill="var(--die-pip)" /> : null}
+    </svg>
+  );
+}
+
 export function Die({ value, dim, index, speed }: { value: 0 | 1; dim: boolean; index: number; speed: DiceSpeed }) {
   const cfg = SPEED_CONFIG[speed];
   return (
@@ -50,11 +60,26 @@ export function Die({ value, dim, index, speed }: { value: 0 | 1; dim: boolean; 
       className={["die h-8 w-8 sm:h-9 sm:w-9", dim ? "opacity-45" : ""].join(" ")}
       aria-hidden
     >
-      <svg viewBox="0 0 40 40" className="h-full w-full drop-shadow-sm">
-        <polygon points="20,4 6,36 20,36" fill="var(--die-face, url(#dieFaceLight))" stroke="var(--die-edge)" strokeWidth="1.4" strokeLinejoin="round" />
-        <polygon points="20,4 34,36 20,36" fill="var(--die-face, url(#dieFaceDark))" stroke="var(--die-edge)" strokeWidth="1.4" strokeLinejoin="round" />
-        {value === 1 ? <circle cx="20" cy="26" r="2.8" fill="var(--die-pip)" /> : null}
-      </svg>
+      <DieFace value={value} />
+    </motion.div>
+  );
+}
+
+/**
+ * A die still in the air. Online, the result is the server's to decide, so
+ * there is nothing to show until it answers — but the throw can start the
+ * instant you tap. This turns a round trip of dead air into the animation the
+ * game already has, the same way vs-AI play spends 650 ms "thinking".
+ */
+function SpinningDie({ index }: { index: number }) {
+  return (
+    <motion.div
+      animate={{ rotate: 360 }}
+      transition={{ repeat: Infinity, ease: "linear", duration: 0.55, delay: index * 0.06 }}
+      className="die h-8 w-8 opacity-70 sm:h-9 sm:w-9"
+      aria-hidden
+    >
+      <DieFace value={null} />
     </motion.div>
   );
 }
@@ -75,6 +100,8 @@ export interface DiceTrayProps {
   extraActions?: ReactNode;
   /** Compact single-row mobile footer (dice + buttons, status below). */
   compact?: boolean;
+  /** Online: a roll is in flight and the dice are still in the air. */
+  rolling?: boolean;
 }
 
 export function DiceTray({
@@ -89,6 +116,7 @@ export function DiceTray({
   onRoll,
   extraActions,
   compact = false,
+  rolling = false,
 }: DiceTrayProps) {
   // Show the pending roll, or keep the last throw visible for context.
   const lastRollEvent = [...state.history].reverse().find((e) => e.type === "roll");
@@ -102,7 +130,8 @@ export function DiceTray({
 
   let status: string;
   let emphasis = false;
-  if (state.winner !== null) status = `${state.winner === 0 ? "Light" : "Dark"} wins`;
+  if (rolling) status = "Rolling…";
+  else if (state.winner !== null) status = `${state.winner === 0 ? "Light" : "Dark"} wins`;
   else if (passed) status = passed.reason === "rolled-zero" ? "Rolled zero — turn passes" : "No legal moves — turn passes";
   else if (lastMove?.extraTurn) {
     status = `Rosette! ${currentName} rolls again`;
@@ -127,15 +156,17 @@ export function DiceTray({
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <div className="dice-row flex items-center gap-1.5 px-0.5 sm:gap-2.5 sm:px-1">
             <DieGradients />
-            {(values ?? [0, 0, 0, 0]).map((value, i) => (
-              <Die
-                key={`${state.rollCount}-${i}`}
-                value={value as 0 | 1}
-                dim={stale || values === null}
-                index={i}
-                speed={diceSpeed}
-              />
-            ))}
+            {rolling
+              ? [0, 1, 2, 3].map((i) => <SpinningDie key={`rolling-${i}`} index={i} />)
+              : (values ?? [0, 0, 0, 0]).map((value, i) => (
+                  <Die
+                    key={`${state.rollCount}-${i}`}
+                    value={value as 0 | 1}
+                    dim={stale || values === null}
+                    index={i}
+                    speed={diceSpeed}
+                  />
+                ))}
           </div>
           <motion.div
             key={`total-${state.rollCount}`}
@@ -154,7 +185,7 @@ export function DiceTray({
             ].join(" ")}
             aria-label={total === null ? "no roll yet" : `rolled ${total}`}
           >
-            {total ?? "–"}
+            {rolling ? "–" : (total ?? "–")}
           </motion.div>
         </div>
 
@@ -176,7 +207,7 @@ export function DiceTray({
               compact ? "min-h-9 px-4 py-1.5" : "px-5 py-2",
               humanCanRoll ? "pulse-gold" : "",
             ].join(" ")}
-            disabled={!humanCanRoll}
+            disabled={!humanCanRoll || rolling}
             onClick={onRoll}
             aria-keyshortcuts="r"
           >

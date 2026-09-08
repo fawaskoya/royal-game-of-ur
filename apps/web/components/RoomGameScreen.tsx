@@ -52,6 +52,8 @@ export function RoomGameScreen({
   onResign,
   onClaimTimeout,
   turnDeadlineMs = null,
+  rolling = false,
+  busy = false,
 }: {
   room: UseLocalRoomResult;
   title: string;
@@ -70,6 +72,10 @@ export function RoomGameScreen({
   onResign?: () => void;
   onClaimTimeout?: () => void;
   turnDeadlineMs?: number | null;
+  /** Online: a throw is in flight, so the dice stay in the air. */
+  rolling?: boolean;
+  /** Online: an action is awaiting the server; don't invite another. */
+  busy?: boolean;
 }) {
   const { layout, isTouch } = useGameLayout();
   const { settings } = useSettings();
@@ -202,8 +208,9 @@ export function RoomGameScreen({
               <DiceTray
                 state={state}
                 tail={room.tail}
+                rolling={rolling}
                 aiTurn={false}
-                humanCanRoll={room.canRoll}
+                humanCanRoll={room.canRoll && !busy}
                 humanCanMove={room.canMove}
                 diceSpeed={settings.diceSpeed}
                 hintText={notice ?? null}

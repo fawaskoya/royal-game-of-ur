@@ -228,6 +228,8 @@ function OnlineFlow({ onExit, onSwitchWire }: { onExit(): void; onSwitchWire(): 
         onResign={room.resign}
         onClaimTimeout={room.claimTimeout}
         turnDeadlineMs={room.turnDeadlineMs}
+        rolling={room.rolling}
+        busy={room.busy}
         onLeave={() => {
           room.leave();
           onExit();

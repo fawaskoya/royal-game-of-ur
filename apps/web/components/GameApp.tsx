@@ -24,6 +24,7 @@ import { loadTutorialProgress } from "@/lib/useTutorial";
 import { loadResults } from "@/lib/stats/matchResults";
 import { isOnlineConfigured } from "@/lib/multiplayer/supabaseClient";
 import { prewarmAuth } from "@/lib/multiplayer/auth";
+import { prewarmGameServer } from "@/lib/multiplayer/supabaseTransport";
 import { isDonateEnabled } from "@/lib/donate";
 import { trackStoreOpen } from "@/lib/analytics";
 
@@ -553,11 +554,17 @@ export function GameApp() {
                     open ? "shrink-0 py-2" : "min-h-0 flex-1 py-1.5",
                   ].join(" ")}
                   onPointerEnter={() => {
-                    if (card.id === "match" && isOnlineConfigured()) prewarmAuth();
+                    if ((card.id === "match" || card.id === "room") && isOnlineConfigured()) {
+                      prewarmAuth();
+                      prewarmGameServer();
+                    }
                   }}
                   onClick={() => {
                     setChoice(card.id);
-                    if (card.id === "match" && isOnlineConfigured()) prewarmAuth();
+                    if ((card.id === "match" || card.id === "room") && isOnlineConfigured()) {
+                      prewarmAuth();
+                      prewarmGameServer();
+                    }
                   }}
                   aria-expanded={open}
                 >
@@ -676,11 +683,17 @@ export function GameApp() {
                     firstRun && card.id === "tutorial" && choice === "tutorial" ? "card--gilded" : "",
                   ].join(" ")}
                   onPointerEnter={() => {
-                    if (card.id === "match" && isOnlineConfigured()) prewarmAuth();
+                    if ((card.id === "match" || card.id === "room") && isOnlineConfigured()) {
+                      prewarmAuth();
+                      prewarmGameServer();
+                    }
                   }}
                   onClick={() => {
                     setChoice(card.id);
-                    if (card.id === "match" && isOnlineConfigured()) prewarmAuth();
+                    if ((card.id === "match" || card.id === "room") && isOnlineConfigured()) {
+                      prewarmAuth();
+                      prewarmGameServer();
+                    }
                   }}
                   aria-pressed={choice === card.id}
                 >
