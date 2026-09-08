@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { getDonateUrl } from "@/lib/donate";
+import { trackDonateClick } from "@/lib/analytics";
 import { Modal } from "./ui/Modal";
 
 const AMOUNTS = [
@@ -21,8 +22,12 @@ export function SupportPanel({ open, onClose }: { open: boolean; onClose(): void
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // The outbound click is the intent worth counting — opening this panel is
+  // not. `source` is where the panel was opened from; today that is only
+  // ever the main menu.
   const openCheckout = () => {
     if (!paymentLink) return;
+    trackDonateClick("menu");
     window.open(paymentLink, "_blank", "noopener,noreferrer");
   };
 
@@ -33,6 +38,7 @@ export function SupportPanel({ open, onClose }: { open: boolean; onClose(): void
       openCheckout();
       return;
     }
+    trackDonateClick("menu");
     setBusy(true);
     try {
       const res = await fetch("/api/donate", {

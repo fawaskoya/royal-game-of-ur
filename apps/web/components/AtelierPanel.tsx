@@ -22,6 +22,7 @@ import {
 } from "@/lib/cosmetics";
 import { ensureSession, getSupabaseClient } from "@/lib/multiplayer/supabaseClient";
 import { signInWithEmail, signUpWithEmail } from "@/lib/multiplayer/auth";
+import { trackSkinClick } from "@/lib/analytics";
 import { Modal } from "./ui/Modal";
 import { Board } from "./Board";
 import { DieGradients } from "./DiceTray";
@@ -373,7 +374,15 @@ export function AtelierPanel({ open, onClose }: { open: boolean; onClose(): void
   /** Purchase intent: emailed players go straight to payment; guests first
    * get the account step — create (keeps the same uid, so nothing is lost),
    * sign in, or knowingly continue browser-bound. */
-  const buyAll = () => {
+  /**
+   * @param skinId Which card the intent came from — the sellable SKU the
+   * player clicked, or `unlock_all` for the banner. Catalog ids only; never
+   * anything the player typed.
+   */
+  const buyAll = (skinId: string) => {
+    // Purchase *intent*, not checkout: guests go through the account step
+    // below first, and every paid SKU shares this one unlock-all product.
+    trackSkinClick(skinId, UNLOCK_ALL_PRICE_USD);
     if (buying) return;
     setBuyError(null);
     if (isGuest) {
@@ -461,7 +470,7 @@ export function AtelierPanel({ open, onClose }: { open: boolean; onClose(): void
           <button
             className="btn btn-primary shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium"
             disabled={buying}
-            onClick={buyAll}
+            onClick={() => buyAll("unlock_all")}
           >
             {buying ? "Opening…" : "Unlock all"}
           </button>
@@ -639,7 +648,7 @@ export function AtelierPanel({ open, onClose }: { open: boolean; onClose(): void
                 previewing={previews[sku.category] === sku.id}
                 onEquip={() => equip(sku)}
                 onPreview={() => togglePreview(sku)}
-                onBuyAll={buyAll}
+                onBuyAll={() => buyAll(sku.id)}
               />
             );
           })}

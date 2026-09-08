@@ -25,6 +25,7 @@ import { loadResults } from "@/lib/stats/matchResults";
 import { isOnlineConfigured } from "@/lib/multiplayer/supabaseClient";
 import { prewarmAuth } from "@/lib/multiplayer/auth";
 import { isDonateEnabled } from "@/lib/donate";
+import { trackStoreOpen } from "@/lib/analytics";
 
 type MenuChoice = "ai" | "pvp" | "watch" | "room" | "tutorial" | "match";
 
@@ -428,7 +429,12 @@ export function GameApp() {
       <button className={["btn rounded-lg text-sm", compact ? "min-h-8 px-2.5 py-1" : "px-4 py-1.5"].join(" ")} onClick={() => setSettingsOpen(true)}>
         Settings
       </button>
-      <button className={["btn rounded-lg text-sm", compact ? "min-h-8 px-2.5 py-1" : "px-4 py-1.5"].join(" ")} onClick={() => setAtelierOpen(true)}>
+      <button className={["btn rounded-lg text-sm", compact ? "min-h-8 px-2.5 py-1" : "px-4 py-1.5"].join(" ")} onClick={() => {
+          // The menu footer is the only way into the Store today; `source`
+          // is here so a second entry point becomes measurable for free.
+          trackStoreOpen("menu");
+          setAtelierOpen(true);
+        }}>
         Store
       </button>
       <button className={["btn rounded-lg text-sm", compact ? "min-h-8 px-2.5 py-1" : "px-4 py-1.5"].join(" ")} onClick={() => fileInputRef.current?.click()}>
