@@ -20,6 +20,14 @@ import {
 } from "@ur/engine";
 import type { RoomPlayer } from "@/lib/network/types";
 import { LocalRoomHost, LocalRoomTransport, makeRoomCode } from "./localRoom";
+import {
+  sideOf,
+  trackFirstRoll,
+  trackGameComplete,
+  trackGameStart,
+  trackRoomCreated,
+  trackRoomJoined,
+} from "@/lib/analytics";
 
 export type RoomPhase = "idle" | "waiting" | "playing" | "error";
 
@@ -54,6 +62,15 @@ export function useLocalRoom(): UseLocalRoomResult {
   const transportRef = useRef<LocalRoomTransport | null>(null);
   const logRef = useRef<GameEvent[]>([]);
   const rulesetRef = useRef<RulesetConfig | null>(null);
+
+  // Same-device rooms report as `private` — the surface is Private room,
+  // just on the local wire. Guards are keyed on the room code (one game per
+  // room here), and leave() reads live state through a ref so it can keep a
+  // stable identity: it doubles as this hook's unmount cleanup.
+  const startedRef = useRef<string | null>(null);
+  const outcomeRef = useRef<string | null>(null);
+  const startedAtRef = useRef<string>(new Date().toISOString());
+  const liveRef = useRef<{ state: GameState | null; code: string | null }>({ state: null, code: null });
 
   const rebuild = useCallback((tail: readonly GameEvent[]) => {
     const ruleset = rulesetRef.current;
@@ -117,6 +134,8 @@ export function useLocalRoom(): UseLocalRoomResult {
     hostRef.current = roomHost;
     setCode(roomCode);
     setError(null);
+    startedAtRef.current = new Date().toISOString();
+    trackRoomCreated();
     attach(new LocalRoomTransport(roomHost), roomCode);
   }, [attach]);
 
@@ -130,12 +149,26 @@ export function useLocalRoom(): UseLocalRoomResult {
       setCode(cleaned);
       setError(null);
       setPhase("waiting");
+      startedAtRef.current = new Date().toISOString();
+      trackRoomJoined();
       attach(new LocalRoomTransport(null), cleaned);
     },
     [attach],
   );
 
   const leave = useCallback(() => {
+    const { state: live, code: roomCode } = liveRef.current;
+    if (live && roomCode && live.winner === null && live.history.length > 0 && outcomeRef.current !== roomCode) {
+      outcomeRef.current = roomCode;
+      const started = new Date(startedAtRef.current).getTime();
+      trackGameComplete({
+        mode: "private",
+        result: "abandoned",
+        difficulty: null,
+        turns: live.rollCount,
+        durationMs: Number.isFinite(started) ? Math.max(0, Date.now() - started) : 0,
+      });
+    }
     transportRef.current?.disconnect();
     hostRef.current?.close();
     transportRef.current = null;
@@ -153,12 +186,14 @@ export function useLocalRoom(): UseLocalRoomResult {
   useEffect(() => () => leave(), [leave]);
 
   const state = snapshot?.state ?? null;
+  liveRef.current = { state, code };
   const gamePhase = state ? phaseOf(state) : null;
   const myTurn = state !== null && mySeat !== null && state.winner === null && state.current === mySeat;
   const legal = state && myTurn && gamePhase === "awaiting-move" ? legalMoves(state) : [];
 
   const roll = useCallback(() => {
     if (!myTurn || gamePhase !== "awaiting-roll") return;
+    trackFirstRoll("private");
     void transportRef.current?.requestRoll(code ?? "", logRef.current.length);
   }, [myTurn, gamePhase, code]);
 
@@ -174,6 +209,29 @@ export function useLocalRoom(): UseLocalRoomResult {
     },
     [myTurn, gamePhase, code],
   );
+
+  // Both seats filled — the board is live.
+  useEffect(() => {
+    if (phase !== "playing" || !code || mySeat === null) return;
+    if (startedRef.current === code) return;
+    startedRef.current = code;
+    trackGameStart({ mode: "private", difficulty: null, side: sideOf(mySeat) });
+  }, [phase, code, mySeat]);
+
+  useEffect(() => {
+    if (state?.winner == null || !code) return;
+    if (outcomeRef.current === code) return;
+    outcomeRef.current = code;
+    const started = new Date(startedAtRef.current).getTime();
+    trackGameComplete({
+      mode: "private",
+      // Two humans share this device, so there is no single "you" to win.
+      result: "finished",
+      difficulty: null,
+      turns: state.rollCount,
+      durationMs: Number.isFinite(started) ? Math.max(0, Date.now() - started) : 0,
+    });
+  }, [state, code]);
 
   return {
     phase,

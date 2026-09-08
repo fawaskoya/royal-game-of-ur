@@ -37,6 +37,15 @@ import { getSupabaseClient } from "./supabaseClient";
 import type { GameMode } from "@/lib/useGame";
 import { recordResult, resultFromGame } from "@/lib/stats/matchResults";
 import { archiveGame } from "@/lib/archive";
+import {
+  sideOf,
+  trackFirstRoll,
+  trackGameComplete,
+  trackGameStart,
+  trackRoomCreated,
+  trackRoomJoined,
+  type AnalyticsMode,
+} from "@/lib/analytics";
 
 export type UseOnlineRoomResult = UseLocalRoomResult & {
   /** Last transport-level failure worth showing inline (e.g. "not your turn"). */
@@ -81,6 +90,20 @@ export function useOnlineRoom(): UseOnlineRoomResult {
   const busyRef = useRef(false);
   const startedAtRef = useRef<string>(new Date().toISOString());
   const recordedRef = useRef<string | null>(null);
+
+  // This one hook serves two surfaces: matchmaking (joinGameId) reports as
+  // `online`, invite-code rooms (host/join) as `private`. Analytics guards
+  // are keyed on game id so a rematch counts as a new game.
+  const surfaceRef = useRef<AnalyticsMode>("private");
+  const startedRef = useRef<string | null>(null);
+  const outcomeRef = useRef<string | null>(null);
+  // Mirrors for the abandonment check in leave(), which must keep a stable
+  // identity — it is wired directly to exit buttons and (in useLocalRoom)
+  // to an unmount cleanup, where a changing identity would re-fire it.
+  const liveRef = useRef<{ state: GameState | null; ended: GameEndedSignal | null }>({
+    state: null,
+    ended: null,
+  });
 
   const rebuild = useCallback((tail: readonly GameEvent[]) => {
     const ruleset = rulesetRef.current;
@@ -177,6 +200,8 @@ export function useOnlineRoom(): UseOnlineRoomResult {
     void (async () => {
       try {
         const { gameId, roomCode } = await createOnlineRoom();
+        surfaceRef.current = "private";
+        trackRoomCreated();
         await attach(gameId, roomCode);
       } catch (err) {
         setError(err instanceof Error ? err.message : "could not create the room");
@@ -197,6 +222,8 @@ export function useOnlineRoom(): UseOnlineRoomResult {
       void (async () => {
         try {
           const { gameId } = await joinOnlineRoom(cleaned);
+          surfaceRef.current = "private";
+          trackRoomJoined();
           await attach(gameId, cleaned);
         } catch (err) {
           setError(err instanceof Error ? err.message : "could not join the room");
@@ -212,6 +239,7 @@ export function useOnlineRoom(): UseOnlineRoomResult {
     (gameId: string, label = "MATCH") => {
       setError(null);
       setPhase("waiting");
+      surfaceRef.current = "online";
       void (async () => {
         try {
           await attach(gameId, label);
@@ -225,6 +253,21 @@ export function useOnlineRoom(): UseOnlineRoomResult {
   );
 
   const leave = useCallback(() => {
+    // Walking out mid-game is an abandonment (the opponent is left to claim
+    // the clock). Shares the outcome guard, so a decided game stays quiet.
+    const { state: live, ended: over } = liveRef.current;
+    const gameId = gameIdRef.current;
+    if (live && gameId && !over && live.winner === null && live.history.length > 0 && outcomeRef.current !== gameId) {
+      outcomeRef.current = gameId;
+      const started = new Date(startedAtRef.current).getTime();
+      trackGameComplete({
+        mode: surfaceRef.current,
+        result: "abandoned",
+        difficulty: null,
+        turns: live.rollCount,
+        durationMs: Number.isFinite(started) ? Math.max(0, Date.now() - started) : 0,
+      });
+    }
     transportRef.current?.disconnect();
     transportRef.current = null;
     gameIdRef.current = null;
@@ -247,6 +290,7 @@ export function useOnlineRoom(): UseOnlineRoomResult {
   useEffect(() => () => transportRef.current?.disconnect(), []);
 
   const state = snapshot?.state ?? null;
+  liveRef.current = { state, ended };
 
   // A board finish also lands here so the overlay has ONE source of truth.
   useEffect(() => {
@@ -274,8 +318,39 @@ export function useOnlineRoom(): UseOnlineRoomResult {
   const roll = useCallback(() => {
     if (!myTurn || gamePhase !== "awaiting-roll" || !gameIdRef.current) return;
     const gameId = gameIdRef.current;
+    trackFirstRoll(surfaceRef.current);
     act(() => transportRef.current!.requestRoll(gameId, logRef.current.length));
   }, [myTurn, gamePhase, act]);
+
+  // The board is live once both seats are filled — that, not entering the
+  // lobby, is when a game has begun. Keyed on game id so a rematch (which
+  // attaches a new id) reports its own start.
+  useEffect(() => {
+    const gameId = gameIdRef.current;
+    if (phase !== "playing" || !gameId || mySeat === null) return;
+    if (startedRef.current === gameId) return;
+    startedRef.current = gameId;
+    trackGameStart({ mode: surfaceRef.current, difficulty: null, side: sideOf(mySeat) });
+  }, [phase, mySeat]);
+
+  // `ended` is the single game-over source (board finish, resign, timeout),
+  // so completion rides it rather than the engine winner alone.
+  useEffect(() => {
+    const gameId = gameIdRef.current;
+    if (!ended || !gameId || mySeat === null) return;
+    if (outcomeRef.current === gameId) return;
+    outcomeRef.current = gameId;
+    const started = new Date(startedAtRef.current).getTime();
+    trackGameComplete({
+      mode: surfaceRef.current,
+      // Resign and timeout are rated exactly like an on-board loss, so they
+      // report the same way here.
+      result: ended.winner === mySeat ? "win" : "loss",
+      difficulty: null,
+      turns: state?.rollCount ?? 0,
+      durationMs: Number.isFinite(started) ? Math.max(0, Date.now() - started) : 0,
+    });
+  }, [ended, mySeat, state]);
 
   // A finished online game joins the local record exactly once: a
   // MatchResult for Stats and a verifiable replay in the archive — the same
