@@ -6,6 +6,7 @@ import { useGameLayout } from "@/lib/useGameLayout";
 import { useTutorial } from "@/lib/useTutorial";
 import { useSettings } from "@/lib/settings";
 import { sfx } from "@/lib/sound";
+import { trackTutorialComplete } from "@/lib/analytics";
 import { Board } from "./Board";
 import { PlayerPanel } from "./PlayerPanel";
 import { DiceTray } from "./DiceTray";
@@ -50,7 +51,15 @@ export function TutorialView({ onExit }: { onExit(): void }) {
     if (tutorial.finished && state.winner !== null) sfx.win();
   }, [tutorial.finished, state.winner]);
 
+  // `finish` backs Exit, Skip and the final Finish button alike, so
+  // completion is decided by whether the learner actually reached the last
+  // step — not by which button they pressed to leave.
+  const completedRef = useRef(false);
   const finish = () => {
+    if (tutorial.finished && !completedRef.current) {
+      completedRef.current = true;
+      trackTutorialComplete();
+    }
     tutorial.markDone();
     onExit();
   };

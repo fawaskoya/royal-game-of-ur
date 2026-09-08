@@ -20,6 +20,7 @@ import {
   type GameState,
   type Move,
 } from "@ur/engine";
+import { trackFirstRoll, trackGameStart } from "@/lib/analytics";
 
 export type TutorialAction =
   | { kind: "next" } // advance on button press
@@ -240,6 +241,16 @@ function stateAfter(steps: number): GameState {
 
 export function useTutorial(): UseTutorialResult {
   const initial = useMemo(loadTutorialProgress, []);
+  // The scripted game counts as a started game the moment the board is up —
+  // there is no lobby or setup step to wait for. Ref-guarded so StrictMode's
+  // double-invoked effect reports once.
+  const startedRef = useRef(false);
+  useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+    trackGameStart({ mode: "tutorial", difficulty: null, side: "light" });
+  }, []);
+
   const startStep = initial.completed ? 0 : initial.step;
   const [stepIndex, setStepIndex] = useState(startStep);
   const [state, setState] = useState<GameState>(() => stateAfter(startStep));
@@ -261,6 +272,9 @@ export function useTutorial(): UseTutorialResult {
   const roll = useCallback(() => {
     if (step.action.kind !== "roll") return;
     if (phaseOf(state) !== "awaiting-roll") return;
+    // Guarded above, so the guide's scripted throws (which run through the
+    // guideRoll effect) can never be mistaken for the learner rolling.
+    trackFirstRoll("tutorial");
     advance(applyRoll(state, makeRoll(step.action.total)));
   }, [step, state, advance]);
 
