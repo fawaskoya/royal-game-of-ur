@@ -63,11 +63,14 @@ function handleFor(uid: string): string {
 }
 
 // The full header set supabase-js actually sends (it adds apikey and
-// x-client-info beyond the obvious two) — omitting any of them fails the
-// browser preflight even though server-to-server calls sail through.
+// x-client-info beyond the obvious two, and x-region whenever the caller
+// pins an invocation to a region) — omitting any of them fails the browser
+// preflight even though server-to-server calls sail straight through, which
+// makes this the easiest thing in the codebase to break and not notice.
+// Anything added to a `functions.invoke` call on the client belongs here too.
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-region",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Max-Age": "86400",
 } as const;
