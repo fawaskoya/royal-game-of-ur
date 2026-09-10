@@ -1,11 +1,12 @@
-# Supabase CLI project config — linked to production project nuynfpilpukakegeuolj
-project_id = "nuynfpilpukakegeuolj"
+# Supabase CLI project config — linked to production project fxavqkfpwmrvbvpidwaw
+# (eu-central-1; replaced the original Sydney project 2026-09-10 — see docs/GO_LIVE_PLAN.md)
+project_id = "fxavqkfpwmrvbvpidwaw"
 
 [api]
 enabled = true
 
 [db]
-major_version = 15
+major_version = 17
 
 [auth]
 enabled = true

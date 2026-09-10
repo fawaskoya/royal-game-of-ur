@@ -95,6 +95,28 @@ interface GameRow {
   started_at: string | null;
 }
 
+/**
+ * One admin client for the life of the isolate, not one per request.
+ *
+ * Every `admin.from(...)` is an HTTPS call to PostgREST. Building a fresh
+ * client per request meant a fresh connection pool per request, so each call
+ * paid its own TLS handshake — measured at ~275 ms per database round trip,
+ * and (tellingly) that cost did NOT fall when the database moved from Sydney
+ * to Frankfurt, which is what rules out distance as the cause. Hoisting the
+ * client lets keep-alive connections survive between invocations that share
+ * an isolate.
+ *
+ * Safe to share: it holds no per-caller state. Authentication comes from the
+ * caller's own JWT, verified separately per request; this client only ever
+ * carries the service key.
+ */
+let adminClient: AdminClient | null = null;
+
+function getAdmin(url: string, key: string): AdminClient {
+  if (!adminClient) adminClient = createClient(url, key, { auth: { persistSession: false } });
+  return adminClient;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: CORS_HEADERS });
@@ -111,7 +133,7 @@ Deno.serve(async (req: Request) => {
   const jwt = authHeader.replace(/^Bearer\s+/i, "");
   if (!jwt) return errorResponse("missing Authorization bearer token", 401);
 
-  const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+  const admin = getAdmin(supabaseUrl, serviceKey);
 
   // Fast path: verify the signature in-process against the cached JWKS
   // instead of a round trip to the Auth service, which measured ~380 ms on
