@@ -42,7 +42,7 @@ wire (rooms, codes, seats, server-validated moves, event sync — `LocalRoomTran
 wire is now *written* against a real Supabase project, not yet deployed/verified:
 
 **Done (2026-07-08):**
-- Supabase project `royal-game-of-ur` created **[founder]** (`potentdream's Org`, Sydney region).
+- Supabase project `royal-game-of-ur` created **[founder]** (`potentdream's Org`, Sydney region). **Superseded 2026-09-10** — that account became inaccessible and Sydney was serving almost no one; the backend now runs on a new project `fxavqkfpwmrvbvpidwaw` in `eu-central-1` under the `potentcapital` org (see CHANGELOG and AG-23).
 - Keys wired into Vercel (all environments) and a local `.env.local`: `NEXT_PUBLIC_SUPABASE_URL`,
   `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`.
 - `supabase/migrations/0001_init.sql`: `profiles`, `games`, `game_events`, `ratings`,
