@@ -77,6 +77,10 @@ export type UseOnlineRoomResult = UseLocalRoomResult & {
   busy: boolean;
 };
 
+/** Floor on how long the dice visibly tumble, even when the result is already
+ * known locally — below this a throw stops reading as a throw. */
+const MIN_TUMBLE_MS = 420;
+
 export function useOnlineRoom(): UseOnlineRoomResult {
   const [phase, setPhase] = useState<UseLocalRoomResult["phase"]>("idle");
   const [code, setCode] = useState<string | null>(null);
@@ -105,6 +109,27 @@ export function useOnlineRoom(): UseOnlineRoomResult {
    * authoritative rebuild doesn't play the same move a second time.
    */
   const optimisticRef = useRef<{ fromIndex: number; count: number } | null>(null);
+
+  /*
+   * Pre-fired rolls.
+   *
+   * Rolling is not a decision in Ur — you must roll, the only choice is which
+   * piece to move afterwards. So the request can go out the moment the turn
+   * becomes yours and the result can sit here until you actually tap Roll,
+   * which takes the whole round trip off the perceived clock.
+   *
+   * Holding it is the fiddly part: the roll is committed server-side the
+   * instant we ask, and our own Realtime subscription would otherwise show
+   * the dice before the player touched anything. So while a pre-fired roll is
+   * outstanding, `ingest` queues incoming batches instead of applying them,
+   * and tapping Roll releases the queue behind the tumble animation. The
+   * verified log is still the only source of state — this only delays when it
+   * is read.
+   */
+  const deferRef = useRef(false);
+  const deferredRef = useRef<{ fromIndex: number; events: readonly GameEvent[] }[]>([]);
+  const prefetchAtRef = useRef<number | null>(null);
+  const prefetchRef = useRef<Promise<void> | null>(null);
   const startedAtRef = useRef<string>(new Date().toISOString());
   const recordedRef = useRef<string | null>(null);
 
@@ -137,6 +162,11 @@ export function useOnlineRoom(): UseOnlineRoomResult {
   /** Slot a batch by seq; apply the contiguous prefix; stash the rest. */
   const ingest = useCallback(
     (fromIndex: number, events: readonly GameEvent[]) => {
+      // A pre-fired roll is waiting on the player's tap — queue, don't apply.
+      if (deferRef.current) {
+        deferredRef.current.push({ fromIndex, events });
+        return;
+      }
       events.forEach((event, i) => {
         const seq = fromIndex + i;
         if (seq >= logRef.current.length) pendingRef.current.set(seq, event);
@@ -205,6 +235,10 @@ export function useOnlineRoom(): UseOnlineRoomResult {
       transportRef.current?.disconnect();
       logRef.current = [];
       pendingRef.current.clear();
+      deferRef.current = false;
+      deferredRef.current = [];
+      prefetchRef.current = null;
+      prefetchAtRef.current = null;
       setSnapshot(null);
       setRematchOffered(false);
       startedAtRef.current = new Date().toISOString();
@@ -313,6 +347,10 @@ export function useOnlineRoom(): UseOnlineRoomResult {
       });
     }
     forgetActiveGame();
+    deferRef.current = false;
+    deferredRef.current = [];
+    prefetchRef.current = null;
+    prefetchAtRef.current = null;
     transportRef.current?.disconnect();
     transportRef.current = null;
     gameIdRef.current = null;
@@ -365,20 +403,86 @@ export function useOnlineRoom(): UseOnlineRoomResult {
       });
   }, []);
 
+  /** Apply everything a pre-fired roll has been holding back. */
+  const releaseDeferred = useCallback(() => {
+    deferRef.current = false;
+    prefetchRef.current = null;
+    const queued = deferredRef.current;
+    deferredRef.current = [];
+    for (const batch of queued) ingest(batch.fromIndex, batch.events);
+  }, [ingest]);
+
+  /** Throw away a pre-fired roll's bookkeeping without applying it here. */
+  const discardPrefetch = useCallback(() => {
+    deferRef.current = false;
+    deferredRef.current = [];
+    prefetchRef.current = null;
+    prefetchAtRef.current = null;
+  }, []);
+
+  /**
+   * Ask for the roll as soon as the turn arrives, before the player taps.
+   * Deliberately outside `act()`: this is background work, so it must not
+   * light up the busy state or surface an error banner. If it fails we simply
+   * fall back to asking again on the tap.
+   */
+  useEffect(() => {
+    if (phase !== "playing" || ended) return;
+    if (!myTurn || gamePhase !== "awaiting-roll") return;
+    if (busyRef.current || rolling) return;
+    const gameId = gameIdRef.current;
+    const transport = transportRef.current;
+    if (!gameId || !transport) return;
+    const at = logRef.current.length;
+    if (prefetchAtRef.current === at) return; // already asked for this position
+    prefetchAtRef.current = at;
+    deferRef.current = true;
+    prefetchRef.current = transport.requestRoll(gameId, at).catch((err) => {
+      discardPrefetch();
+      throw err;
+    });
+    void prefetchRef.current.catch(() => undefined); // failure is handled on tap
+  }, [phase, ended, myTurn, gamePhase, rolling, discardPrefetch]);
+
+  // A game that has ended must not sit behind a held roll.
+  useEffect(() => {
+    if (ended && deferRef.current) releaseDeferred();
+  }, [ended, releaseDeferred]);
+
   const roll = useCallback(() => {
-    if (!myTurn || gamePhase !== "awaiting-roll" || !gameIdRef.current || busyRef.current) return;
+    if (!myTurn || gamePhase !== "awaiting-roll" || !gameIdRef.current || rolling) return;
     const gameId = gameIdRef.current;
     trackFirstRoll(surfaceRef.current);
-    // The dice can't be predicted — the server holds the seed — but the
-    // throw can start now and settle on the response, so the round trip
-    // happens behind an animation instead of behind a frozen tray.
     setRolling(true);
-    act(() =>
-      transportRef
-        .current!.requestRoll(gameId, logRef.current.length)
-        .finally(() => setRolling(false)),
-    );
-  }, [myTurn, gamePhase, act]);
+    const startedAt = Date.now();
+
+    // Even when the answer is already in hand, let the dice actually tumble —
+    // an instant result reads as a glitch, not a throw.
+    const settle = () => {
+      const wait = Math.max(0, MIN_TUMBLE_MS - (Date.now() - startedAt));
+      window.setTimeout(() => {
+        releaseDeferred();
+        setRolling(false);
+      }, wait);
+    };
+
+    const live = () => {
+      discardPrefetch();
+      if (busyRef.current) {
+        setRolling(false);
+        return;
+      }
+      act(() =>
+        transportRef
+          .current!.requestRoll(gameId, logRef.current.length)
+          .finally(() => setRolling(false)),
+      );
+    };
+
+    const pending = prefetchRef.current;
+    if (pending) void pending.then(settle, live);
+    else live();
+  }, [myTurn, gamePhase, rolling, act, releaseDeferred, discardPrefetch]);
 
   // The board is live once both seats are filled — that, not entering the
   // lobby, is when a game has begun. Keyed on game id so a rematch (which

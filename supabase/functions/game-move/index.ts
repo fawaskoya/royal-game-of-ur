@@ -751,12 +751,17 @@ async function handleRoll(
 
   const next = applyRoll(state, roll);
   const newEvents = next.history.slice(events.length);
-  // Deliberately NOT parallelised: if the append loses a race (duplicate
-  // seq), rng_state must stay where it is. Advancing the cursor without a
-  // matching event would put a gap in the dice sequence and break the
-  // commit-reveal check players can run against seed_revealed.
-  await appendEvents(admin, gameId, events.length, newEvents);
-  await admin.from("game_secrets").update({ rng_state: rng.getState() }).eq("game_id", gameId);
+  // One round trip, one transaction (migration 0009). The two writes used to
+  // be sequential precisely so a lost race on `seq` couldn't leave rng_state
+  // advanced past the event log; sharing a transaction gives that for free
+  // and halves the write cost.
+  const { error: commitError } = await admin.rpc("commit_roll", {
+    p_game_id: gameId,
+    p_from_index: events.length,
+    p_events: newEvents,
+    p_rng_state: rng.getState(),
+  });
+  if (commitError) throw new Error(commitError.message);
   await finalizeIfDecided(admin, gameId, next);
 
   return { events: newEvents };

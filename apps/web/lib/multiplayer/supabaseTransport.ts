@@ -20,11 +20,31 @@ import type {
   ServerEventBatch,
   TransportStatus,
 } from "@/lib/network/types";
+import { FunctionRegion } from "@supabase/supabase-js";
 import { ensureSession, getSupabaseClient } from "./supabaseClient";
 
 /** Mirror of the server's TURN_TIMEOUT_SECONDS (game-move edge function) —
  * display/countdown only; the server clock is the authority on claims. */
 export const ONLINE_TURN_TIMEOUT_SECONDS = 120;
+
+/**
+ * Run the game function in the database's own region.
+ *
+ * By default Supabase executes an Edge Function at the edge nearest the
+ * caller, which sounds faster and is the opposite. The function is chatty
+ * with the database and the player is not: each action makes two round trips
+ * to Postgres, so running "near the player" means crossing to Frankfurt twice
+ * per action, while running in Frankfurt means the player crosses once and
+ * the database calls are local.
+ *
+ * Measured from India (the worst case for this, since it is far from both):
+ *   default (nearest edge)  in-function query 446 ms, whole action 3055 ms
+ *   pinned to eu-central-1  in-function query  82 ms, whole action  943 ms
+ *
+ * Keep this equal to the project's region — if the database ever moves, this
+ * moves with it, or every action pays an extra ocean crossing.
+ */
+const FUNCTION_REGION = FunctionRegion.EuCentral1;
 
 export type GameEndReason = "finish" | "resign" | "timeout";
 export interface GameEndedSignal {
@@ -84,6 +104,7 @@ async function invoke<T>(action: string, payload: Record<string, unknown>, token
     const { data, error } = await supabase.functions.invoke("game-move", {
       body: { action, ...payload },
       headers: { Authorization: `Bearer ${token}` },
+      region: FUNCTION_REGION,
     });
     if (!error) {
       if (data?.error) throw new Error(data.error);
