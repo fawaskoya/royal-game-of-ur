@@ -25,9 +25,9 @@ Monorepo (pnpm + strict TS), docs suite, ADRs, CI workflow.
 
 ## Phase 3 — Depth
 
-- [ ] Hint engine + move explanations; post-game analysis (blunder detection via eval deltas)
+- [x] Hint engine + move explanations; post-game analysis (blunder detection via eval deltas)
 - [ ] Statistics dashboard (games, win rates, capture rate, rosette usage, streaks, accuracy)
-- [ ] Puzzle generator + daily puzzle
+- [x] Puzzle generator + daily puzzle (date-seeded, one per UTC day — `apps/web/lib/daily.ts`)
 - [ ] Master (MCTS) and Grandmaster (hybrid) AI tiers; AI benchmarking harness expansion
 - [ ] PWA (offline, installable)
 

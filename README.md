@@ -2,7 +2,7 @@
 
 The definitive digital version of the world's oldest playable board game (c. 2600 BCE) — historically authentic rules, honest AI, verified replays, online rooms, global matchmaking, and a real Elo ladder.
 
-**Play:** [royal-game-of-ur-zeta.vercel.app](https://royal-game-of-ur-zeta.vercel.app)  
+**Play:** [royalgameofur.app](https://royalgameofur.app) · **Rules guide:** [royalgameofur.app/how-to-play](https://royalgameofur.app/how-to-play)  
 **Vision:** [docs/MASTER_SPEC.md](docs/MASTER_SPEC.md) · **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
 ## Status
@@ -18,9 +18,15 @@ The definitive digital version of the world's oldest playable board game (c. 260
 | Server Elo leaderboard (W–L, win%, last active) | ✅ |
 | Interactive tutorial (to bear-off) | ✅ |
 | Homepage with self-playing attract board; viewport-fit desktop + mobile | ✅ |
-| Atelier cosmetics (boards/dice/pieces/flair) | 🧪 dev only — [catalog](docs/COSMETICS_CATALOG.md) |
+| The Store — 20 cosmetics, one $1.99 unlock (Dodo Payments) | ✅ live — [catalog](docs/COSMETICS_CATALOG.md) |
+| Route overlay (start → exit) in every mode, with a Settings switch | ✅ |
+| Opening coach — tips on a new player's first three moves | ✅ |
+| Daily challenge — one shared puzzle per UTC day, streaks | ✅ |
+| Share-a-game links (whole game in the URL, no server) | ✅ |
+| Post-game analysis, key moments, capture of the day | ✅ |
+| Achievements (20, derived from local data) | ✅ |
+| SEO + legal pages: how-to-play, about, contact, privacy, terms, refunds | ✅ — [docs/SITE_AND_LEGAL.md](docs/SITE_AND_LEGAL.md) |
 | Custom domain + donations | ✅ Donate on homepage → Dodo (`dodo.pe/support-ur`) |
-| Cosmetics (boards / dice) | 📋 planned — [docs/MONETIZATION.md](docs/MONETIZATION.md) |
 
 ## Quickstart
 
@@ -61,6 +67,10 @@ Migrations live under `supabase/migrations/` (`0001` … `0006`).
 vercel deploy --prod --yes
 ```
 
+## Performance guardrails
+
+The game must stay fast. Before merging web changes: `pnpm --filter @ur/web build` and compare the `/` row's **First Load JS** with the previous build (currently **~257 kB**). Menu panels (Stats, Replays, Ladder, Store, Settings, Donate, How to play, Daily, Achievements) are `next/dynamic` imports so they never weigh on first paint; analysis and the daily puzzle only compute when opened; opening-coach search runs only for a new player's first three moves. Static pages (`/how-to-play`, legal) ship no game JS.
+
 ## Structure
 
 ```
@@ -84,6 +94,7 @@ docs/              Specs, architecture, UI, roadmap, ADRs.
 | [LEADERBOARDS_AND_STATS.md](docs/LEADERBOARDS_AND_STATS.md) | Ladder + local stats |
 | [MONETIZATION.md](docs/MONETIZATION.md) | Donate (Dodo) + future cosmetics |
 | [GO_LIVE_PLAN.md](docs/GO_LIVE_PLAN.md) | Web → stores sequencing |
+| [SITE_AND_LEGAL.md](docs/SITE_AND_LEGAL.md) | SEO pages, legal text, owner review checklist |
 | [ROADMAP.md](docs/ROADMAP.md) · [TASKS.md](docs/TASKS.md) | Phases and backlog |
 | [docs/adr/](docs/adr/) | Architectural decisions |
 

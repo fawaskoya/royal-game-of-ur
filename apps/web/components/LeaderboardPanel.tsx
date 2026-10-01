@@ -47,11 +47,15 @@ export function LeaderboardPanel({ open, onClose }: { open: boolean; onClose(): 
         </button>
       }
     >
+      <p className="mb-2 text-[11px] uppercase tracking-widest text-[var(--gold)]">
+        Season 1 · began 10 Sep 2026
+      </p>
       {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
       {!error && rows === null ? <p className="text-sm text-[var(--ink-dim)]">Consulting the scribes…</p> : null}
       {rows !== null && rows.length === 0 ? (
         <p className="text-sm text-[var(--ink-dim)]">
-          No rated games yet — finish an online match or private room and the ladder begins with you.
+          A fresh season: every rating started from scratch, so the top spot is wide open. Finish an
+          online match or private room and the ladder begins with you.
         </p>
       ) : null}
       {rows !== null && rows.length > 0 ? (

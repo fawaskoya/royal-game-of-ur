@@ -6,6 +6,7 @@ import { describeEvent } from "@/lib/describeEvent";
 import { analyzeGameAsync, type GameAnalysis, type MoveClassification, type MoveGrade } from "@/lib/analysis";
 import { Board } from "./Board";
 import { PlayerPanel } from "./PlayerPanel";
+import { ShareButton } from "./ShareButton";
 
 const AUTOPLAY_MS = 900;
 
@@ -43,12 +44,15 @@ export function ReplayViewer({
   replay,
   onClose,
   autoAnalyze = false,
+  startAt,
 }: {
   replay: Replay;
   onClose(): void;
   autoAnalyze?: boolean;
+  /** Land on this many events instead of the final position (e.g. a highlight). */
+  startAt?: number;
 }) {
-  const [index, setIndex] = useState(replay.events.length);
+  const [index, setIndex] = useState(Math.min(startAt ?? replay.events.length, replay.events.length));
   const [playing, setPlaying] = useState(false);
   const [analysis, setAnalysis] = useState<GameAnalysis | null>(null);
   const [progress, setProgress] = useState<[number, number] | null>(null);
@@ -124,6 +128,7 @@ export function ReplayViewer({
               {momentsOpen ? "Hide moments" : "Key moments"}
             </button>
           )}
+          <ShareButton replay={replay} />
           <button className="btn rounded-lg px-3 py-1.5 text-sm" onClick={() => downloadReplay(replay)}>
             Export
           </button>

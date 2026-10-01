@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { DIFFICULTIES, type DifficultyId } from "@ur/ai";
 import { importReplay, UrEngineError, type PlayerId, type Replay } from "@ur/engine";
 import { GameView } from "./GameView";
@@ -8,15 +9,24 @@ import type { GameMode } from "@/lib/useGame";
 import { clearGame, loadGame } from "@/lib/persistence/gameStorage";
 import type { SavedGame } from "@/lib/persistence/saveSchema";
 import { Modal } from "./ui/Modal";
-import { HowToPlay } from "./HowToPlay";
 import { TutorialView } from "./TutorialView";
-import { SettingsPanel } from "./SettingsPanel";
-import { AtelierPanel } from "./AtelierPanel";
-import { StatsPanel } from "./StatsPanel";
-import { LeaderboardPanel } from "./LeaderboardPanel";
-import { SupportPanel } from "./SupportPanel";
+import { CONTACT_EMAIL, CONTACT_HREF } from "@/lib/contact";
+import { SITE_LINKS } from "@/lib/site/pages";
+import { decodeShare } from "@/lib/share";
+import { dateKeyUTC, loadDaily } from "@/lib/daily";
+
+// Menu panels and the daily challenge load on demand — none is needed to
+// start a game, so none may weigh on first load.
+const HowToPlay = dynamic(() => import("./HowToPlay").then((m) => m.HowToPlay), { ssr: false });
+const SettingsPanel = dynamic(() => import("./SettingsPanel").then((m) => m.SettingsPanel), { ssr: false });
+const AtelierPanel = dynamic(() => import("./AtelierPanel").then((m) => m.AtelierPanel), { ssr: false });
+const StatsPanel = dynamic(() => import("./StatsPanel").then((m) => m.StatsPanel), { ssr: false });
+const LeaderboardPanel = dynamic(() => import("./LeaderboardPanel").then((m) => m.LeaderboardPanel), { ssr: false });
+const SupportPanel = dynamic(() => import("./SupportPanel").then((m) => m.SupportPanel), { ssr: false });
+const ArchivePanel = dynamic(() => import("./ArchivePanel").then((m) => m.ArchivePanel), { ssr: false });
+const DailyChallenge = dynamic(() => import("./DailyChallenge").then((m) => m.DailyChallenge), { ssr: false });
+const AchievementsPanel = dynamic(() => import("./AchievementsPanel").then((m) => m.AchievementsPanel), { ssr: false });
 import { ReplayViewer } from "./ReplayViewer";
-import { ArchivePanel } from "./ArchivePanel";
 import { OnlineRoomView } from "./OnlineRoomView";
 import { MatchmakingView } from "./MatchmakingView";
 import { MenuVignette } from "./MenuVignette";
@@ -191,11 +201,15 @@ export function GameApp() {
   const [importedReplay, setImportedReplay] = useState<Replay | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [donateThanks, setDonateThanks] = useState(false);
+  const [dailyOpen, setDailyOpen] = useState(false);
+  const [dailyDone, setDailyDone] = useState(true);
+  const [achievementsOpen, setAchievementsOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (mode === null && !tutorialActive && !matchActive && !roomActive) {
       setSaved(loadGame());
+      setDailyDone(Boolean(loadDaily()[dateKeyUTC()]));
       const isFirst = !loadTutorialProgress().completed && loadResults().length === 0;
       setFirstRun(isFirst);
       if (isFirst) setChoice("tutorial");
@@ -207,6 +221,19 @@ export function GameApp() {
     const timer = setTimeout(() => setImportError(null), 4000);
     return () => clearTimeout(timer);
   }, [importError]);
+
+  // A shared-game link (?g=…) opens straight into the replay.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("g");
+    if (code === null) return;
+    const replay = decodeShare(code);
+    if (replay) setImportedReplay(replay);
+    else setImportError("That shared game link is incomplete or invalid.");
+    params.delete("g");
+    const q = params.toString();
+    window.history.replaceState({}, "", `${window.location.pathname}${q ? `?${q}` : ""}${window.location.hash}`);
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -404,6 +431,17 @@ export function GameApp() {
       </div>
     ) : null;
 
+
+  const siteLinks = (
+    <nav aria-label="About this site" className="flex flex-wrap justify-center gap-x-3 gap-y-0.5 text-[11px] text-[var(--ink-dim)] lg:justify-start">
+      {SITE_LINKS.map((l) => (
+        <a key={l.href} href={l.href} className="underline-offset-2 hover:text-[var(--gold)] hover:underline">
+          {l.label}
+        </a>
+      ))}
+    </nav>
+  );
+
   const secondaryLinks = (compact: boolean) => (
     <>
       <button
@@ -415,6 +453,16 @@ export function GameApp() {
         onClick={() => setGuideOpen(true)}
       >
         How to play
+      </button>
+      <button
+        className={[
+          "btn rounded-lg text-sm",
+          compact ? "min-h-8 px-2.5 py-1" : "px-4 py-1.5",
+          dailyDone ? "" : "ring-1 ring-[var(--gold)] text-[var(--gold)]",
+        ].join(" ")}
+        onClick={() => setDailyOpen(true)}
+      >
+        Daily{dailyDone ? "" : " ●"}
       </button>
       <button className={["btn rounded-lg text-sm", compact ? "min-h-8 px-2.5 py-1" : "px-4 py-1.5"].join(" ")} onClick={() => setArchiveOpen(true)}>
         Replays
@@ -446,7 +494,23 @@ export function GameApp() {
 
   const panels = (
     <>
-      <StatsPanel open={statsOpen} onClose={() => setStatsOpen(false)} />
+      <StatsPanel
+        open={statsOpen}
+        onClose={() => setStatsOpen(false)}
+        onAchievements={() => {
+          setStatsOpen(false);
+          setAchievementsOpen(true);
+        }}
+      />
+      {achievementsOpen ? <AchievementsPanel open onClose={() => setAchievementsOpen(false)} /> : null}
+      {dailyOpen ? (
+        <DailyChallenge
+          onClose={() => {
+            setDailyOpen(false);
+            setDailyDone(Boolean(loadDaily()[dateKeyUTC()]));
+          }}
+        />
+      ) : null}
       <LeaderboardPanel open={boardOpen} onClose={() => setBoardOpen(false)} />
       <SupportPanel open={supportOpen} onClose={() => setSupportOpen(false)} />
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
@@ -615,6 +679,19 @@ export function GameApp() {
         <footer className="mt-1.5 shrink-0 space-y-1.5">
           <div className="flex flex-wrap justify-center gap-1.5">{secondaryLinks(true)}</div>
           {donateNudge(true)}
+          <p className="text-center text-[11px] text-[var(--ink-dim)]">
+            <a className="text-[var(--gold)] underline-offset-2 hover:underline" href={CONTACT_HREF}>
+              {CONTACT_EMAIL}
+            </a>
+            {" · "}
+            <a className="underline-offset-2 hover:text-[var(--gold)] hover:underline" href="/privacy">
+              Privacy
+            </a>
+            {" · "}
+            <a className="underline-offset-2 hover:text-[var(--gold)] hover:underline" href="/terms">
+              Terms
+            </a>
+          </p>
           {importError ? <p className="text-center text-xs text-[var(--danger)]">{importError}</p> : null}
         </footer>
       </main>
@@ -665,6 +742,12 @@ export function GameApp() {
             {importError ? <p className="hidden text-xs text-[var(--danger)] lg:block">{importError}</p> : null}
             <footer className="hidden text-xs text-[var(--ink-dim)] lg:block">
               Classic Irving Finkel rules · British Museum reconstruction
+              <br />
+              Contact:{" "}
+              <a className="text-[var(--gold)] underline-offset-2 hover:underline" href={CONTACT_HREF}>
+                {CONTACT_EMAIL}
+              </a>
+              <span className="mt-1 block">{siteLinks}</span>
             </footer>
           </div>
 

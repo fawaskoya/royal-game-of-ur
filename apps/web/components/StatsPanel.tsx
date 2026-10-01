@@ -13,7 +13,15 @@ function formatMs(ms: number | null): string {
   return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
 }
 
-export function StatsPanel({ open, onClose }: { open: boolean; onClose(): void }) {
+export function StatsPanel({
+  open,
+  onClose,
+  onAchievements,
+}: {
+  open: boolean;
+  onClose(): void;
+  onAchievements?: () => void;
+}) {
   const [generation, setGeneration] = useState(0);
   const data = useMemo(() => {
     void generation; // recompute after Clear
@@ -57,6 +65,11 @@ export function StatsPanel({ open, onClose }: { open: boolean; onClose(): void }
           >
             Clear stats
           </button>
+          {onAchievements ? (
+            <button className="btn rounded-lg px-3 py-2 text-sm" onClick={onAchievements}>
+              Achievements
+            </button>
+          ) : null}
           <button className="btn btn-primary rounded-lg px-4 py-2 text-sm" onClick={onClose}>
             Done
           </button>

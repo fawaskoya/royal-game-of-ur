@@ -3,6 +3,8 @@
 import { DIFFICULTIES } from "@ur/ai";
 import { useSettings, type Settings } from "@/lib/settings";
 import { Modal } from "./ui/Modal";
+import { CONTACT_EMAIL, CONTACT_HREF } from "@/lib/contact";
+import { SITE_LINKS } from "@/lib/site/pages";
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -82,6 +84,28 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose(): voi
             onChange={(v) => update({ hints: v === "on" })}
           />
         </Row>
+        <Row label="Show the route">
+          <Segmented<"on" | "off">
+            label="Show the route"
+            value={settings.route ? "on" : "off"}
+            options={[
+              { id: "on", label: "On" },
+              { id: "off", label: "Off" },
+            ]}
+            onChange={(v) => update({ route: v === "on" })}
+          />
+        </Row>
+        <Row label="Opening tips">
+          <Segmented<"on" | "off">
+            label="Opening tips"
+            value={settings.coach ? "on" : "off"}
+            options={[
+              { id: "on", label: "On" },
+              { id: "off", label: "Off" },
+            ]}
+            onChange={(v) => update({ coach: v === "on" })}
+          />
+        </Row>
         <Row label="Confirm new game">
           <Segmented<"on" | "off">
             label="Confirm new game"
@@ -142,6 +166,20 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose(): voi
           Auto orientation follows your device rotation on touch screens and the header toggle on
           desktop. {DIFFICULTIES.length} AI tiers available — pick per game from the menu.
         </p>
+        <p className="pt-2 text-xs text-[var(--ink-dim)]">
+          Bug, idea, or something confusing? Write to{" "}
+          <a className="text-[var(--gold)] underline-offset-2 hover:underline" href={CONTACT_HREF}>
+            {CONTACT_EMAIL}
+          </a>
+          .
+        </p>
+        <nav aria-label="About this site" className="flex flex-wrap gap-x-3 gap-y-1 pt-2 text-xs">
+          {SITE_LINKS.map((l) => (
+            <a key={l.href} href={l.href} className="text-[var(--gold)] underline-offset-2 hover:underline">
+              {l.label}
+            </a>
+          ))}
+        </nav>
       </div>
     </Modal>
   );
