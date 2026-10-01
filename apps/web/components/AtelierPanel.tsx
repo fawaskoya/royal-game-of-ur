@@ -210,14 +210,14 @@ function SkuCard({
           </button>
         ) : sku.priceUsd != null ? (
           <button
-            className="btn flex-1 rounded-lg py-1 text-xs"
+            className="btn flex-1 whitespace-nowrap rounded-lg px-1.5 py-1 text-xs"
             title={`Unlock everything for $${UNLOCK_ALL_PRICE_USD.toFixed(2)}`}
             onClick={onBuyAll}
           >
             🔒 {priceLabel(sku)}
           </button>
         ) : (
-          <button className="btn flex-1 rounded-lg py-1 text-xs" disabled title="Earned through play — coming with achievements">
+          <button className="btn flex-1 whitespace-nowrap rounded-lg px-1.5 py-1 text-xs" disabled title="Earned through play — coming with achievements">
             🔒 {priceLabel(sku)}
           </button>
         )}
