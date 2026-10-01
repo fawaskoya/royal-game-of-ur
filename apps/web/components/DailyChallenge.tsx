@@ -65,6 +65,9 @@ export function DailyChallenge({ onClose }: { onClose(): void }) {
     return chosen ? applyMove(puzzle.state, chosen) : puzzle.state;
   }, [puzzle, chosen]);
   const legal = useMemo(() => (puzzle && !answered ? legalMoves(puzzle.state) : []), [puzzle, answered]);
+  // Entering a new piece is a legal (and sometimes the best) answer; it is
+  // played from the side's start pool, not from a square on the board.
+  const entryMove = useMemo(() => legal.find((m) => m.from === 0) ?? null, [legal]);
 
   const streak = dailyStreak(record, todayKey);
   const bestStreak = bestDailyStreak(record);
@@ -111,9 +114,9 @@ export function DailyChallenge({ onClose }: { onClose(): void }) {
               player={1}
               controller="human"
               active={!answered && puzzle.state.current === 1}
-              entryMove={null}
-              canAct={false}
-              onMove={() => undefined}
+              entryMove={puzzle.state.current === 1 ? entryMove : null}
+              canAct={!answered && puzzle.state.current === 1}
+              onMove={choose}
               variant={layout === "vertical" && isTouch ? "rail" : "default"}
             />
           </div>
@@ -134,9 +137,9 @@ export function DailyChallenge({ onClose }: { onClose(): void }) {
               player={0}
               controller="human"
               active={!answered && puzzle.state.current === 0}
-              entryMove={null}
-              canAct={false}
-              onMove={() => undefined}
+              entryMove={puzzle.state.current === 0 ? entryMove : null}
+              canAct={!answered && puzzle.state.current === 0}
+              onMove={choose}
               variant={layout === "vertical" && isTouch ? "rail" : "default"}
             />
           </div>

@@ -59,7 +59,7 @@ npx supabase db push --linked
 npx supabase functions deploy game-move --project-ref YOUR_REF
 ```
 
-Migrations live under `supabase/migrations/` (`0001` … `0006`).
+Migrations live under `supabase/migrations/` (`0001` … `0010`).
 
 ### Deploy web
 
