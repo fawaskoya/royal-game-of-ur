@@ -6,7 +6,7 @@ Premium digital Royal Game of Ur (vision: chess.com/Lichess quality). pnpm monor
 
 ```bash
 pnpm install                 # once
-pnpm test                    # all tests (engine 48, ai 14) — must stay green
+pnpm test                    # all tests (engine 49, ai 17, web 89) — must stay green
 pnpm typecheck               # all packages
 pnpm demo                    # narrated CLI game — quick end-to-end sanity check
 pnpm bench                   # AI ladder validation (each tier must beat the one below)
