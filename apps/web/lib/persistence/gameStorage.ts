@@ -14,7 +14,8 @@ export interface StorageLike {
 
 const SAVE_KEY = "ur:save";
 
-function defaultStorage(): StorageLike | null {
+/** The browser's localStorage, or null on the server / when storage is blocked. Never throws. */
+export function browserStorage(): StorageLike | null {
   try {
     if (typeof window === "undefined") return null;
     return window.localStorage;
@@ -23,7 +24,7 @@ function defaultStorage(): StorageLike | null {
   }
 }
 
-export function saveGame(save: SavedGame, storage: StorageLike | null = defaultStorage()): boolean {
+export function saveGame(save: SavedGame, storage: StorageLike | null = browserStorage()): boolean {
   if (!storage) return false;
   try {
     storage.setItem(SAVE_KEY, JSON.stringify(save));
@@ -34,7 +35,7 @@ export function saveGame(save: SavedGame, storage: StorageLike | null = defaultS
 }
 
 /** Load, migrate, and fully validate the stored game. Corrupt saves are discarded. */
-export function loadGame(storage: StorageLike | null = defaultStorage()): SavedGame | null {
+export function loadGame(storage: StorageLike | null = browserStorage()): SavedGame | null {
   if (!storage) return null;
   try {
     const raw = storage.getItem(SAVE_KEY);
@@ -58,7 +59,7 @@ export function loadGame(storage: StorageLike | null = defaultStorage()): SavedG
   }
 }
 
-export function clearGame(storage: StorageLike | null = defaultStorage()): void {
+export function clearGame(storage: StorageLike | null = browserStorage()): void {
   try {
     storage?.removeItem(SAVE_KEY);
   } catch {
@@ -66,6 +67,6 @@ export function clearGame(storage: StorageLike | null = defaultStorage()): void 
   }
 }
 
-export function hasSavedGame(storage: StorageLike | null = defaultStorage()): boolean {
+export function hasSavedGame(storage: StorageLike | null = browserStorage()): boolean {
   return loadGame(storage) !== null;
 }

@@ -34,7 +34,7 @@ import {
   resignGame,
   type GameEndedSignal,
 } from "./supabaseTransport";
-import { getSupabaseClient } from "./supabaseClient";
+import { getSupabase } from "./supabaseClient";
 import { forgetActiveGame, rememberActiveGame } from "./activeGame";
 import type { GameMode } from "@/lib/useGame";
 import { recordResult, resultFromGame } from "@/lib/stats/matchResults";
@@ -212,14 +212,12 @@ export function useOnlineRoom(): UseOnlineRoomResult {
 
   /** Fetch both seats' display names once the roster has real ids. */
   const resolveHandles = useCallback((roster: readonly RoomPlayer[]) => {
-    const supabase = getSupabaseClient();
     const ids = roster.map((p) => p.id);
-    if (!supabase || ids.length === 0) return;
-    void supabase
-      .from("profiles")
-      .select("id, handle")
-      .in("id", ids)
-      .then(({ data }) => {
+    if (ids.length === 0) return;
+    void getSupabase()
+      .then((supabase) => supabase?.from("profiles").select("id, handle").in("id", ids))
+      .then((res) => {
+        const data = res?.data;
         if (!data) return;
         const bySeat: [string | null, string | null] = [null, null];
         for (const player of roster) {

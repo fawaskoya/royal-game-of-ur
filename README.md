@@ -25,7 +25,7 @@ The definitive digital version of the world's oldest playable board game (c. 260
 | Share-a-game links (whole game in the URL, no server) | ✅ |
 | Post-game analysis, key moments, capture of the day | ✅ |
 | Achievements (20, derived from local data) | ✅ |
-| SEO + legal pages: how-to-play, about, contact, privacy, terms, refunds | ✅ — [docs/SITE_AND_LEGAL.md](docs/SITE_AND_LEGAL.md) |
+| SEO + content pages: how-to-play, strategy (data-backed), history, printable board, about, contact, privacy, terms, refunds | ✅ — [docs/SITE_AND_LEGAL.md](docs/SITE_AND_LEGAL.md) |
 | Custom domain + donations | ✅ Donate on homepage → Dodo (`dodo.pe/support-ur`) |
 
 ## Quickstart
@@ -36,6 +36,7 @@ pnpm test              # engine + ai + web unit tests
 pnpm --filter @ur/web typecheck
 pnpm dev               # web client → http://localhost:3000
 pnpm demo              # narrated terminal game
+pnpm stats             # regenerate the strategy guide's statistics (seeded, ~4 min)
 ```
 
 ### Local web env (online play)
@@ -69,7 +70,12 @@ vercel deploy --prod --yes
 
 ## Performance guardrails
 
-The game must stay fast. Before merging web changes: `pnpm --filter @ur/web build` and compare the `/` row's **First Load JS** with the previous build (currently **~257 kB**). Menu panels (Stats, Replays, Ladder, Store, Settings, Donate, How to play, Daily, Achievements) are `next/dynamic` imports so they never weigh on first paint; analysis and the daily puzzle only compute when opened; opening-coach search runs only for a new player's first three moves. Static pages (`/how-to-play`, legal) ship no game JS.
+The game must stay fast. Before merging web changes, run `pnpm --filter @ur/web build` and compare the `/` row's **First Load JS** with the previous build (currently **~175 kB**; content pages ~106 kB in the table, ~116 kB real gzipped download). Note the build table can under-count: it once hid a sitewide 60 KB Supabase import, so when in doubt measure the scripts a built page actually references.
+
+- **Supabase is never in first load.** `lib/multiplayer/supabaseClient.ts` loads `@supabase/supabase-js` on demand (`getSupabase()`); never import it as a value anywhere else (types only).
+- **Only the menu is in the homepage bundle.** Play screens and menu panels are `next/dynamic`; play screens are prefetched on idle.
+- Analysis and the daily puzzle compute only when opened; the opening coach searches only on a new player's first three moves.
+- System font stacks only: no web-font downloads.
 
 ## Structure
 

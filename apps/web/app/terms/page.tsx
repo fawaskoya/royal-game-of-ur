@@ -1,16 +1,18 @@
 import { SiteShell, H2, A, UL } from "@/components/site/SiteShell";
 import { pageMeta } from "@/lib/site/meta";
+import { JsonLd, breadcrumb } from "@/lib/site/jsonld";
 import { CONTACT_EMAIL, CONTACT_HREF } from "@/lib/contact";
 
 export const metadata = pageMeta(
   "/terms",
-  "Terms of Service",
+  "Terms of Service · Royal Game of Ur",
   "The terms for using Royal Game of Ur: fair play, accounts, online games, optional cosmetic purchases, donations and liability.",
 );
 
 export default function TermsPage() {
   return (
     <SiteShell title="Terms of Service" intro="Plain-language rules for using the site. By using Royal Game of Ur you agree to them.">
+      <JsonLd data={breadcrumb("/terms", "Terms of service")} />
       <p className="text-xs text-[var(--ink-dim)]">Last updated: 1 October 2026</p>
 
       <H2>1. The service</H2>

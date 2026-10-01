@@ -4,19 +4,43 @@ import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { DIFFICULTIES, type DifficultyId } from "@ur/ai";
 import { importReplay, UrEngineError, type PlayerId, type Replay } from "@ur/engine";
-import { GameView } from "./GameView";
 import type { GameMode } from "@/lib/useGame";
 import { clearGame, loadGame } from "@/lib/persistence/gameStorage";
 import type { SavedGame } from "@/lib/persistence/saveSchema";
-import { Modal } from "./ui/Modal";
-import { TutorialView } from "./TutorialView";
 import { CONTACT_EMAIL, CONTACT_HREF } from "@/lib/contact";
 import { SITE_LINKS } from "@/lib/site/pages";
 import { decodeShare } from "@/lib/share";
 import { dateKeyUTC, loadDaily } from "@/lib/daily";
+import { loadTutorialProgress } from "@/lib/useTutorial";
+import { loadResults } from "@/lib/stats/matchResults";
+import { isOnlineConfigured } from "@/lib/multiplayer/supabaseClient";
+import { prewarmAuth } from "@/lib/multiplayer/auth";
+import { prewarmGameServer } from "@/lib/multiplayer/supabaseTransport";
+import { isDonateEnabled } from "@/lib/donate";
+import { trackStoreOpen } from "@/lib/analytics";
+import { Modal } from "./ui/Modal";
+import { MenuVignette } from "./MenuVignette";
 
-// Menu panels and the daily challenge load on demand — none is needed to
-// start a game, so none may weigh on first load.
+/*
+ * Only the menu itself is in the first-load bundle. Everything behind a tap
+ * loads on demand: the play screens are prefetched while the browser is idle
+ * (see prefetchScreens) so Begin still feels instant; panels load when the
+ * menu mounts them.
+ */
+const loadGameView = () => import("./GameView").then((m) => m.GameView);
+const loadTutorialView = () => import("./TutorialView").then((m) => m.TutorialView);
+const loadReplayViewer = () => import("./ReplayViewer").then((m) => m.ReplayViewer);
+const loadOnlineRoomView = () => import("./OnlineRoomView").then((m) => m.OnlineRoomView);
+const loadMatchmakingView = () => import("./MatchmakingView").then((m) => m.MatchmakingView);
+
+/** Same backdrop as the screens, so a not-yet-loaded screen is a blank page, not a flash. */
+const ScreenFallback = () => <div className="h-dvh bg-[var(--bg)]" aria-busy="true" />;
+
+const GameView = dynamic(loadGameView, { ssr: false, loading: ScreenFallback });
+const TutorialView = dynamic(loadTutorialView, { ssr: false, loading: ScreenFallback });
+const ReplayViewer = dynamic(loadReplayViewer, { ssr: false, loading: ScreenFallback });
+const OnlineRoomView = dynamic(loadOnlineRoomView, { ssr: false, loading: ScreenFallback });
+const MatchmakingView = dynamic(loadMatchmakingView, { ssr: false, loading: ScreenFallback });
 const HowToPlay = dynamic(() => import("./HowToPlay").then((m) => m.HowToPlay), { ssr: false });
 const SettingsPanel = dynamic(() => import("./SettingsPanel").then((m) => m.SettingsPanel), { ssr: false });
 const AtelierPanel = dynamic(() => import("./AtelierPanel").then((m) => m.AtelierPanel), { ssr: false });
@@ -26,17 +50,23 @@ const SupportPanel = dynamic(() => import("./SupportPanel").then((m) => m.Suppor
 const ArchivePanel = dynamic(() => import("./ArchivePanel").then((m) => m.ArchivePanel), { ssr: false });
 const DailyChallenge = dynamic(() => import("./DailyChallenge").then((m) => m.DailyChallenge), { ssr: false });
 const AchievementsPanel = dynamic(() => import("./AchievementsPanel").then((m) => m.AchievementsPanel), { ssr: false });
-import { ReplayViewer } from "./ReplayViewer";
-import { OnlineRoomView } from "./OnlineRoomView";
-import { MatchmakingView } from "./MatchmakingView";
-import { MenuVignette } from "./MenuVignette";
-import { loadTutorialProgress } from "@/lib/useTutorial";
-import { loadResults } from "@/lib/stats/matchResults";
-import { isOnlineConfigured } from "@/lib/multiplayer/supabaseClient";
-import { prewarmAuth } from "@/lib/multiplayer/auth";
-import { prewarmGameServer } from "@/lib/multiplayer/supabaseTransport";
-import { isDonateEnabled } from "@/lib/donate";
-import { trackStoreOpen } from "@/lib/analytics";
+
+let screensPrefetched = false;
+/** Warm the play screens' chunks once the page is idle — after first paint, never competing with it. */
+function prefetchScreens(): void {
+  if (screensPrefetched) return;
+  screensPrefetched = true;
+  const run = () => {
+    void loadGameView();
+    void loadTutorialView();
+    if (isOnlineConfigured()) {
+      void loadMatchmakingView();
+      void loadOnlineRoomView();
+    }
+  };
+  if ("requestIdleCallback" in window) window.requestIdleCallback(run, { timeout: 4000 });
+  else setTimeout(run, 1500);
+}
 
 type MenuChoice = "ai" | "pvp" | "watch" | "room" | "tutorial" | "match";
 
@@ -208,6 +238,7 @@ export function GameApp() {
 
   useEffect(() => {
     if (mode === null && !tutorialActive && !matchActive && !roomActive) {
+      prefetchScreens();
       setSaved(loadGame());
       setDailyDone(Boolean(loadDaily()[dateKeyUTC()]));
       const isFirst = !loadTutorialProgress().completed && loadResults().length === 0;
@@ -221,6 +252,14 @@ export function GameApp() {
     const timer = setTimeout(() => setImportError(null), 4000);
     return () => clearTimeout(timer);
   }, [importError]);
+
+  // The homepage's below-the-fold content belongs to the menu only; during
+  // play the screen owns the viewport (CSS hides .home-content).
+  const playing = mode !== null || tutorialActive || matchActive || roomActive || importedReplay !== null;
+  useEffect(() => {
+    document.documentElement.dataset.screen = playing ? "play" : "menu";
+    if (playing) window.scrollTo(0, 0);
+  }, [playing]);
 
   // A shared-game link (?g=…) opens straight into the replay.
   useEffect(() => {

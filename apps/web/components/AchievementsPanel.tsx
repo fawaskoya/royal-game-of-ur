@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { ACHIEVEMENTS, unlockedIds, loadAchievementState, markSeen } from "@/lib/achievements";
 import { loadDaily } from "@/lib/daily";
 import { loadResults } from "@/lib/stats/matchResults";
@@ -19,9 +19,13 @@ export function AchievementsPanel({ open, onClose }: { open: boolean; onClose():
         sharedGame: loadAchievementState().shared,
       }),
     );
-    markSeen([...ids]);
     return ids;
   }, [open]);
+
+  // Viewing the list counts as being told — no toast later for these.
+  useEffect(() => {
+    if (unlocked) markSeen([...unlocked]);
+  }, [unlocked]);
 
   if (!unlocked) return null;
 

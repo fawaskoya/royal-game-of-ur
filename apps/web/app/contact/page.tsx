@@ -1,16 +1,18 @@
 import { SiteShell, H2, A, UL } from "@/components/site/SiteShell";
 import { pageMeta } from "@/lib/site/meta";
+import { JsonLd, breadcrumb } from "@/lib/site/jsonld";
 import { CONTACT_EMAIL, CONTACT_HREF } from "@/lib/contact";
 
 export const metadata = pageMeta(
   "/contact",
-  "Contact",
+  "Contact · Royal Game of Ur",
   "Contact Royal Game of Ur for support, bug reports, refund requests, privacy requests or press.",
 );
 
 export default function ContactPage() {
   return (
     <SiteShell title="Contact" intro="The fastest way to reach us is email.">
+      <JsonLd data={breadcrumb("/contact", "Contact")} />
       <p className="text-lg">
         <A href={CONTACT_HREF}>{CONTACT_EMAIL}</A>
       </p>

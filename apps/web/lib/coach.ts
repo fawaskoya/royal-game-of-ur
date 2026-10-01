@@ -4,7 +4,7 @@
  * Pure and cheap — it only runs while a tip is still due.
  */
 import { hintFor, type HintTag } from "@ur/ai";
-import type { GameState, PlayerId } from "@ur/engine";
+import type { GameState, Move, PlayerId } from "@ur/engine";
 
 export const COACH_MOVES = 3;
 /** Players with this many finished games or more no longer need the coach. */
@@ -25,8 +25,14 @@ export function movesMadeBy(state: GameState, player: PlayerId): number {
   return state.history.filter((e) => e.type === "move" && e.player === player).length;
 }
 
-/** A tip for `player`'s next move, or null when no coaching is due. */
-export function openingTip(state: GameState, player: PlayerId): string | null {
+export interface OpeningTip {
+  readonly text: string;
+  /** The suggested move, to ring on the board. */
+  readonly move: Move;
+}
+
+/** A tip for `player`'s next move, or null when no coaching is due. One search. */
+export function openingTip(state: GameState, player: PlayerId): OpeningTip | null {
   if (state.winner !== null || state.dice === null || state.current !== player) return null;
   const made = movesMadeBy(state, player);
   if (made >= COACH_MOVES) return null;
@@ -34,5 +40,5 @@ export function openingTip(state: GameState, player: PlayerId): string | null {
   if (!best) return null;
   const tag = best.tags.find((t) => t !== "risky") ?? null;
   const body = tag ? TIP[tag] : "this move keeps your race moving";
-  return `Tip ${made + 1}/${COACH_MOVES}: ${body}`;
+  return { text: `Tip ${made + 1}/${COACH_MOVES}: ${body}`, move: best.move };
 }

@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { SiteShell, H2, UL } from "@/components/site/SiteShell";
+import { BoardDiagram } from "@/components/site/BoardDiagram";
 import { pageMeta } from "@/lib/site/meta";
+import { JsonLd, article, breadcrumb } from "@/lib/site/jsonld";
 
-export const metadata = pageMeta(
-  "/how-to-play",
-  "How to Play the Royal Game of Ur — Rules, Strategy & History",
-  "Learn the Royal Game of Ur in five minutes: the board, the four dice, rosettes, captures and bearing off, using Irving Finkel's reconstruction of the rules. Plus strategy tips and the history of the 4,500-year-old game.",
-);
+const PATH = "/how-to-play";
+const TITLE = "How to Play the Royal Game of Ur: Rules, Dice & Board";
+const DESCRIPTION =
+  "Learn the Royal Game of Ur in five minutes: the board, the four pyramid dice and their odds, rosettes, captures and bearing off — Irving Finkel's rules.";
+
+export const metadata = pageMeta(PATH, TITLE, DESCRIPTION, { ownImage: true });
 
 const FAQ: { q: string; a: string }[] = [
   {
@@ -35,7 +38,7 @@ const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "Are these the real ancient rules?",
-    a: "They are the best-known modern reconstruction: Irving Finkel's, built from a Babylonian cuneiform tablet in the British Museum. Nobody alone knows exactly how it was played 4,500 years ago, but this version is the one scholars and most players use.",
+    a: "They are the best-known modern reconstruction: Irving Finkel's, built from a Babylonian cuneiform tablet in the British Museum. Nobody knows exactly how it was played 4,500 years ago, but this version is the one scholars and most players use.",
   },
   {
     q: "Is it free?",
@@ -53,67 +56,15 @@ const FAQ_JSON_LD = {
   })),
 };
 
-/** Light's route on the 3x8 board: (row, col) for path squares 1..14. */
-const ROUTE: [number, number][] = [
-  [2, 3], [2, 2], [2, 1], [2, 0],
-  [1, 0], [1, 1], [1, 2], [1, 3], [1, 4], [1, 5], [1, 6], [1, 7],
-  [2, 7], [2, 6],
-];
-const ROSETTES = new Set(["0,0", "0,6", "1,3", "2,0", "2,6"]);
-const NOTCH = (r: number, c: number) => (r === 0 || r === 2) && (c === 4 || c === 5);
-
-function BoardDiagram() {
-  const S = 46;
-  const G = 4;
-  const w = 8 * S + 9 * G;
-  const h = 3 * S + 4 * G;
-  const pos = (r: number, c: number) => ({ x: G + c * (S + G), y: G + r * (S + G) });
-  const cells: React.ReactNode[] = [];
-  for (let r = 0; r < 3; r++) {
-    for (let c = 0; c < 8; c++) {
-      if (NOTCH(r, c)) continue;
-      const { x, y } = pos(r, c);
-      const rosette = ROSETTES.has(`${r},${c}`);
-      cells.push(
-        <g key={`${r}-${c}`}>
-          <rect x={x} y={y} width={S} height={S} rx={6} fill="#e8dcc0" stroke="#a07f35" strokeWidth={1} opacity={r === 1 ? 1 : 0.8} />
-          {rosette ? (
-            <text x={x + S / 2} y={y + S / 2 + 8} textAnchor="middle" fontSize={26} fill="#a07f35" opacity={0.55}>
-              ✿
-            </text>
-          ) : null}
-        </g>,
-      );
-    }
-  }
-  const nums = ROUTE.map(([r, c], i) => {
-    const { x, y } = pos(r, c);
-    return (
-      <text key={i} x={x + S / 2} y={y + S / 2 + 5} textAnchor="middle" fontSize={15} fontWeight={700} fill="#2b2416">
-        {i + 1}
-      </text>
-    );
-  });
-  return (
-    <svg
-      viewBox={`0 0 ${w} ${h}`}
-      role="img"
-      aria-label="The Royal Game of Ur board: 20 squares in three rows, with Light's route numbered 1 to 14. Squares 1 to 4 are Light's private entry lane, 5 to 12 are the shared middle lane, and 13 to 14 are the private exit."
-      className="w-full max-w-xl self-center rounded-xl border border-[var(--frame-edge)] bg-[#1b1710] p-1"
-    >
-      {cells}
-      {nums}
-    </svg>
-  );
-}
-
 export default function HowToPlayPage() {
   return (
     <SiteShell
       title="How to Play the Royal Game of Ur"
       intro="A race game for two, played for at least 4,500 years. You can learn it in five minutes: throw the dice, move one piece, and bring all seven home before your opponent does."
     >
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_JSON_LD) }} />
+      <JsonLd data={FAQ_JSON_LD} />
+      <JsonLd data={article({ path: PATH, headline: TITLE, description: DESCRIPTION, datePublished: "2026-10-01", dateModified: "2026-10-01" })} />
+      <JsonLd data={breadcrumb(PATH, "How to play")} />
 
       <Link href="/" className="btn btn-primary w-full rounded-xl px-5 py-3 text-center text-base font-medium sm:w-auto sm:self-start">
         Play now — free, no sign-up
@@ -132,7 +83,7 @@ export default function HowToPlayPage() {
         player has a private lane of four squares to start and two to finish. The eight squares in the middle are shared,
         and that is where the fighting happens. Both players travel the shared lane in the same direction.
       </p>
-      <BoardDiagram />
+      <BoardDiagram label="The Royal Game of Ur board: 20 squares in three rows, with Light's route numbered 1 to 14. Squares 1 to 4 are Light's private entry lane, 5 to 12 are the shared middle lane, and 13 to 14 are the private exit." />
       <p className="text-xs text-[var(--ink-dim)]">
         Light&apos;s route, numbered. Squares 1–4 are your private entry lane, 5–12 the shared lane, 13–14 your private
         exit; then off the board. Dark takes the mirror-image route along the top row. The ✿ squares are rosettes.
@@ -209,6 +160,10 @@ export default function HowToPlayPage() {
           <strong>Keep options.</strong> Having several movable pieces lets you avoid a forced bad move.
         </li>
       </ul>
+      <p>
+        The <Link className="text-[var(--gold)] underline underline-offset-2" href="/strategy">full strategy guide</Link>{" "}
+        puts numbers on all of this, from exact capture odds to how much the first move is worth.
+      </p>
 
       <H2>A short history</H2>
       <p>
@@ -220,8 +175,10 @@ export default function HowToPlayPage() {
       <p>
         The rules were not written down with the boards. Assyriologist Irving Finkel of the British Museum reconstructed how
         the game was played from a Babylonian cuneiform tablet, dated 177 BCE and written by the scribe Itti-Marduk-balāṭu.
-        This site uses his reconstruction. To play it against a computer, a friend, or a stranger online, start a game from
-        the <Link className="text-[var(--gold)] underline underline-offset-2" href="/">home page</Link>.
+        This site uses his reconstruction. There is much more to the story in the{" "}
+        <Link className="text-[var(--gold)] underline underline-offset-2" href="/history">history of the Royal Game of Ur</Link>.
+        To play it against a computer, a friend, or a stranger online, start a game from the{" "}
+        <Link className="text-[var(--gold)] underline underline-offset-2" href="/">home page</Link>.
       </p>
 
       <H2>Frequently asked questions</H2>

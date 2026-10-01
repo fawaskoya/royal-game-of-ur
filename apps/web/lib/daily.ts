@@ -18,7 +18,7 @@ import {
   type Move,
 } from "@ur/engine";
 import { analyzeMoves, type MoveAnalysis } from "@ur/ai";
-import type { StorageLike } from "@/lib/persistence/gameStorage";
+import { browserStorage, type StorageLike } from "@/lib/persistence/gameStorage";
 
 export interface DailyPuzzle {
   readonly dateKey: string;
@@ -95,15 +95,8 @@ export interface DailyEntry {
 }
 export type DailyRecord = Readonly<Record<string, DailyEntry>>;
 
-function defaultStorage(): StorageLike | null {
-  try {
-    return typeof window === "undefined" ? null : window.localStorage;
-  } catch {
-    return null;
-  }
-}
 
-export function loadDaily(storage: StorageLike | null = defaultStorage()): DailyRecord {
+export function loadDaily(storage: StorageLike | null = browserStorage()): DailyRecord {
   if (!storage) return {};
   try {
     const raw = storage.getItem(DAILY_KEY);
@@ -125,7 +118,7 @@ export function loadDaily(storage: StorageLike | null = defaultStorage()): Daily
 export function recordDaily(
   dateKey: string,
   entry: DailyEntry,
-  storage: StorageLike | null = defaultStorage(),
+  storage: StorageLike | null = browserStorage(),
 ): boolean {
   if (!storage) return false;
   try {

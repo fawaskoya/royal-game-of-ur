@@ -1,10 +1,11 @@
 import { SiteShell, H2, A, UL } from "@/components/site/SiteShell";
 import { pageMeta } from "@/lib/site/meta";
+import { JsonLd, breadcrumb } from "@/lib/site/jsonld";
 import { CONTACT_EMAIL, CONTACT_HREF } from "@/lib/contact";
 
 export const metadata = pageMeta(
   "/privacy",
-  "Privacy Policy",
+  "Privacy Policy · Royal Game of Ur",
   "What Royal Game of Ur stores on your device and on our servers, who processes payments and analytics, and how to ask us to delete your data.",
 );
 
@@ -14,6 +15,7 @@ export default function PrivacyPage() {
       title="Privacy Policy"
       intro="We keep this small. You can play most of the game without giving us any personal information at all."
     >
+      <JsonLd data={breadcrumb("/privacy", "Privacy policy")} />
       <p className="text-xs text-[var(--ink-dim)]">Last updated: 1 October 2026</p>
 
       <H2>Who we are</H2>
@@ -31,12 +33,13 @@ export default function PrivacyPage() {
         <li>your settings (theme, board orientation, sound, hints and similar)</li>
         <li>your current unfinished game, so you can continue it</li>
         <li>your finished games and their replays, and your local statistics</li>
-        <li>your tutorial progress</li>
+        <li>your tutorial progress, daily-challenge answers and which achievements you have seen</li>
         <li>your equipped and unlocked cosmetics</li>
         <li>for online play, your last player name and any unfinished online game, so you can rejoin it</li>
       </ul>
       <p>
-        This data never leaves your browser unless you export it. Clearing your browser&apos;s site data deletes it. We do not
+        This data never leaves your browser unless you export it or share a game. A share link contains that game&apos;s
+        dice throws and moves (nothing else) inside the link itself; we do not store it. Clearing your browser&apos;s site data deletes it. We do not
         use advertising or cross-site tracking cookies.
       </p>
 

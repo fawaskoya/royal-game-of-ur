@@ -1,10 +1,11 @@
 import { SiteShell, H2, A, UL } from "@/components/site/SiteShell";
 import { pageMeta } from "@/lib/site/meta";
+import { JsonLd, breadcrumb } from "@/lib/site/jsonld";
 import { CONTACT_EMAIL, CONTACT_HREF } from "@/lib/contact";
 
 export const metadata = pageMeta(
   "/refunds",
-  "Refund & Cancellation Policy",
+  "Refund & Cancellation Policy · Royal Game of Ur",
   "How to request a refund for the one-time Royal Game of Ur Store purchase, and our policy on donations. There are no subscriptions to cancel.",
 );
 
@@ -14,6 +15,7 @@ export default function RefundsPage() {
       title="Refund & Cancellation Policy"
       intro="Buy with confidence: if the Store purchase isn't right for you, ask within 14 days and we'll sort it out."
     >
+      <JsonLd data={breadcrumb("/refunds", "Refund policy")} />
       <p className="text-xs text-[var(--ink-dim)]">Last updated: 1 October 2026</p>
 
       <H2>What you can buy</H2>
