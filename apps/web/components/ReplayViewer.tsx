@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { replayStateAt, type Replay } from "@ur/engine";
 import { describeEvent } from "@/lib/describeEvent";
 import { analyzeGameAsync, type GameAnalysis, type MoveClassification, type MoveGrade } from "@/lib/analysis";
+import { replayControllers } from "@/lib/replayMeta";
+import { useGameLayout } from "@/lib/useGameLayout";
 import { Board } from "./Board";
 import { PlayerPanel } from "./PlayerPanel";
 import { ShareButton } from "./ShareButton";
@@ -25,6 +27,16 @@ const GRADE_GLYPH: Record<MoveClassification, string> = {
   mistake: "?",
   blunder: "??",
 };
+
+/** Path index 0 is the start pool: show it as an entry, not as "square 0". */
+function squareLabel(from: number): string {
+  return from === 0 ? "enter" : String(from);
+}
+
+/** Past the last board square (14) is bearing off. */
+function destLabel(to: number): string {
+  return to > 14 ? "home" : String(to);
+}
 
 function downloadReplay(replay: Replay): void {
   const blob = new Blob([JSON.stringify(replay, null, 2)], { type: "application/json" });
@@ -59,6 +71,11 @@ export function ReplayViewer({
   const [momentsOpen, setMomentsOpen] = useState(false);
   const analysisStarted = useRef(false);
   const total = replay.events.length;
+  // The viewer is always vertical; on phones that means the slim side rails,
+  // exactly like the live game screen (the wide panels get clipped there).
+  const { isTouch } = useGameLayout();
+  const panelVariant = isTouch ? "rail" : "default";
+  const controllers = useMemo(() => replayControllers(replay.meta), [replay.meta]);
 
   const state = useMemo(() => replayStateAt(replay, index), [replay, index]);
   const currentEvent = index > 0 ? replay.events[index - 1] : null;
@@ -156,17 +173,18 @@ export function ReplayViewer({
           <PlayerPanel
             state={state}
             player={1}
-            controller="human"
+            controller={controllers[1]}
             active={state.winner === null && state.current === 1}
             entryMove={null}
             canAct={false}
             onMove={() => undefined}
+            variant={panelVariant}
           />
         </div>
         <div className="ga-board relative">
           <Board state={state} legal={[]} canAct={false} onMove={() => undefined} orientation="vertical" />
           {momentsOpen && analysis ? (
-            <div className="absolute inset-y-0 right-0 flex w-64 max-w-[70%] flex-col rounded-xl border border-[var(--frame-edge)] bg-[var(--bg-raised)]/95">
+            <div className="absolute inset-y-0 right-0 z-20 flex w-64 max-w-[70%] flex-col rounded-xl border border-[var(--frame-edge)] bg-[var(--bg-raised)]/95">
               <div className="border-b border-[var(--frame-edge)] px-3 py-2 text-sm text-[var(--gold)]">
                 Key moments
               </div>
@@ -190,7 +208,8 @@ export function ReplayViewer({
                           T{moment.turn} {moment.player === 0 ? "Light" : "Dark"}
                         </span>{" "}
                         <span className="text-[var(--ink-dim)]">
-                          {moment.played.from}→{moment.played.to} (best {moment.best.from}→{moment.best.to})
+                          {squareLabel(moment.played.from)}→{destLabel(moment.played.to)} (best {squareLabel(moment.best.from)}→
+                          {destLabel(moment.best.to)})
                         </span>
                       </button>
                     </li>
@@ -204,11 +223,12 @@ export function ReplayViewer({
           <PlayerPanel
             state={state}
             player={0}
-            controller="human"
+            controller={controllers[0]}
             active={state.winner === null && state.current === 0}
             entryMove={null}
             canAct={false}
             onMove={() => undefined}
+            variant={panelVariant}
           />
         </div>
         <div className="ga-dice">
@@ -227,7 +247,7 @@ export function ReplayViewer({
                 >
                   {GRADE_GLYPH[currentGrade.classification]} {GRADE_LABEL[currentGrade.classification]}
                   {currentGrade.classification !== "best"
-                    ? ` — best was ${currentGrade.best.from === 0 ? "entering" : currentGrade.best.from}→${currentGrade.best.to}`
+                    ? ` — best was ${squareLabel(currentGrade.best.from)}→${destLabel(currentGrade.best.to)}`
                     : ""}
                 </span>
               ) : null}
