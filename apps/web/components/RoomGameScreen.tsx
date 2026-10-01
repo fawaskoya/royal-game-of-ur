@@ -11,6 +11,9 @@ import { Board } from "./Board";
 import { PlayerPanel } from "./PlayerPanel";
 import { DiceTray } from "./DiceTray";
 import { OwnFlair } from "./Flair";
+import { ShareButton } from "./ShareButton";
+import { exportReplay } from "@ur/engine";
+import { useCoach } from "@/lib/useCoach";
 
 /** Live 1s countdown to a deadline; null when there's no clock. Resets
  * immediately whenever the deadline changes (a new turn) so it never lags. */
@@ -83,6 +86,7 @@ export function RoomGameScreen({
 
   const entryMove = useMemo(() => room.legal.find((m) => m.from === 0) ?? null, [room.legal]);
   const useRail = layout === "vertical" && isTouch;
+  const coach = useCoach(state, room.mySeat, settings.coach && room.canMove);
 
   // One source of truth for "the game is over": a board finish OR a
   // resign/timeout reported on the games row.
@@ -169,6 +173,7 @@ export function RoomGameScreen({
                 canAct={room.canMove}
                 onMove={room.movePiece}
                 orientation={layout}
+                hintMove={coach.move}
                 routeFor={settings.route ? (room.mySeat ?? state.current) : null}
               />
               {!isOver ? (
@@ -214,7 +219,7 @@ export function RoomGameScreen({
                 humanCanRoll={room.canRoll && !busy}
                 humanCanMove={room.canMove}
                 diceSpeed={settings.diceSpeed}
-                hintText={notice ?? null}
+                hintText={notice ?? coach.tip}
                 onRoll={room.roll}
                 compact={isTouch || layout === "horizontal"}
               />
@@ -245,12 +250,13 @@ export function RoomGameScreen({
                 <div className="ornament-rule mx-auto mt-3 max-w-[220px] text-[10px]">✦</div>
                 <div className="mt-3 text-sm text-[var(--ink-dim)]">{outcomeLine(ended, finalWinner, room.mySeat)}</div>
                 {winNote ? <div className="mt-2 text-sm text-[var(--gold)]">{winNote}</div> : null}
-                <div className="mt-6 flex justify-center gap-3">
+                <div className="mt-6 flex flex-wrap justify-center gap-3">
                   {onRematch ? (
                     <button className="btn btn-primary rounded-lg px-5 py-2 text-sm" onClick={onRematch}>
                       {rematchLabel ?? "Rematch"}
                     </button>
                   ) : null}
+                  {state.winner !== null ? <ShareButton replay={exportReplay(state)} className="btn rounded-lg px-5 py-2 text-sm" /> : null}
                   <button className="btn rounded-lg px-5 py-2 text-sm" onClick={onLeave}>
                     Back to menu
                   </button>

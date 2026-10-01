@@ -27,6 +27,8 @@ export interface Settings {
   readonly diceSpeed: "physics" | "quick" | "instant";
   /** Short synthesized sound effects (roll, move, capture, rosette, win). */
   readonly sound: boolean;
+  /** Short plain-English tips on a new player's first three moves. */
+  readonly coach: boolean;
   /** Draw the track (start, direction, exit) over the board during games. */
   readonly route: boolean;
   /** "light" = parchment palette for the page chrome; the board stays wood/ivory in both. */
@@ -41,6 +43,7 @@ export const DEFAULT_SETTINGS: Settings = {
   diceSpeed: "physics",
   sound: true,
   route: true,
+  coach: true,
   theme: "dark",
 };
 
@@ -67,6 +70,7 @@ export function loadSettings(): Settings {
       motion: s.motion === "reduced" ? "reduced" : "system",
       diceSpeed: s.diceSpeed === "quick" || s.diceSpeed === "instant" ? s.diceSpeed : "physics",
       sound: typeof s.sound === "boolean" ? s.sound : DEFAULT_SETTINGS.sound,
+      coach: typeof s.coach === "boolean" ? s.coach : DEFAULT_SETTINGS.coach,
       route: typeof s.route === "boolean" ? s.route : DEFAULT_SETTINGS.route,
       theme: s.theme === "light" ? "light" : "dark",
     };

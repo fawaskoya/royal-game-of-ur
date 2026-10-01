@@ -5,7 +5,15 @@ All notable product changes. Format loosely follows [Keep a Changelog](https://k
 ## [Unreleased]
 
 - **The road is now drawn in every mode.** Players told us they couldn't follow the path; the tutorial's route overlay (start ring, direction chevrons, double-chevron exit) now appears in vs-machine, two-player, private-room, find-a-match and watch games too. It shows *your* route (your seat online, the human side vs the AI, whoever is on turn in pass-and-play). New **Show the route** switch in Settings (on by default).
-- **Contact added** — feedback address in the menu footer (desktop and mobile) and in Settings.
+- **Opening coach.** A new player's first three moves get a plain-English tip ("land on the rosette for a free extra roll") with the suggested move ringed on the board. Built from the hint engine's tags, so it never invents advice; stops after three games. **Opening tips** switch in Settings.
+- **Daily challenge.** One position per UTC day, identical for every player and generated from the date alone (no server). Pick a move, get a ★ rating against the hint engine's ranking and an explanation of the best move; first answer of the day counts; streaks tracked.
+- **Share a game.** A finished game is encoded into ~100 bytes of URL (dice faces + piece indices; the engine re-derives everything else), so **Share** works with no upload and links never expire. A tampered link fails to decode instead of producing an illegal game. Available on the win screens and in the replay viewer.
+- **Capture of the day** in Replays: the hardest hit from your last 24 hours of games (or on record), one tap to watch it.
+- **Achievements** (20), derived from data already on the device — beat each tier, streaks, flawless wins, rosette riders, daily streaks, an online win. Announced on the win screen; list under Stats.
+- **Ladder: Season 1** framing — the September database reset is now explained instead of looking like an empty ladder.
+- **New pages for search and payment-provider review:** `/how-to-play` (full Finkel rules guide + FAQ structured data), `/about`, `/contact`, `/privacy`, `/terms`, `/refunds`; sitemap updated; footer links. Legal wording is a first draft pending owner review — see docs/SITE_AND_LEGAL.md.
+- **Contact** address in the menu footer (desktop + mobile), Settings, and the contact page.
+- **Faster to start, not slower:** menu panels now load on demand; first-load JS for the game page went from 259 kB to ~257 kB despite all of the above. A 25-second AI-vs-AI soak showed zero long main-thread tasks.
 
 - **Online play is roughly 3x faster again.** Measured from India, the worst case for a European backend: a roll went from 1841 ms to **579 ms** and a move from 1281 ms to **559 ms**; European players will see considerably better. Four changes — the game server now runs in the database's own region (it had been running near each *player*, which sounds faster and meant crossing to Frankfurt twice per action instead of once), a roll commits its dice in a single database round trip instead of two, the roll request is sent the moment your turn begins rather than when you tap (rolling isn't a choice in Ur, so the wait can happen behind the dice animation), and a scheduled ping keeps the server warm so the first player after a quiet spell doesn't wait for it to wake.
 

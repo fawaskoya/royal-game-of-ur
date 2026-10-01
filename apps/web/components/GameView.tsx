@@ -17,6 +17,12 @@ import { PlayerPanel } from "./PlayerPanel";
 import { DiceTray } from "./DiceTray";
 import { Modal } from "./ui/Modal";
 import { ReplayViewer } from "./ReplayViewer";
+import { useCoach } from "@/lib/useCoach";
+import { ShareButton } from "./ShareButton";
+import { ACHIEVEMENTS, markSeen, newlyUnlocked } from "@/lib/achievements";
+import { loadDaily } from "@/lib/daily";
+import { loadAchievementState } from "@/lib/achievements";
+import { loadTutorialProgress } from "@/lib/useTutorial";
 
 const HINT_COPY: Record<HintTag, string> = {
   capture: "captures an opponent piece",
@@ -94,7 +100,10 @@ export function GameView({
   const [replayAnalyze, setReplayAnalyze] = useState(false);
   const [rating, setRating] = useState<TrainingRating | null>(null);
   const [hint, setHint] = useState<MoveAnalysis | null>(null);
+  const [unlocked, setUnlocked] = useState<string[]>([]);
   const hintsEnabled = settings.hints && mode.kind !== "watch";
+  const coachSeat = mode.kind === "ai" ? mode.human : mode.kind === "pvp" ? state.current : null;
+  const coach = useCoach(state, coachSeat, settings.coach && game.humanCanMove);
 
   // Training rating updates once the finished game's result lands in the
   // store (the recording effect runs in the same commit; the small delay
@@ -110,6 +119,25 @@ export function GameView({
         setRating(trainingRating(results));
       }
     }, 80);
+    return () => clearTimeout(timer);
+  }, [state.winner, mode.kind, game.gameId]);
+
+  // Achievements that this win just earned — announced once, then remembered.
+  useEffect(() => {
+    if (state.winner === null || mode.kind !== "ai") {
+      setUnlocked([]);
+      return;
+    }
+    const timer = setTimeout(() => {
+      const ids = newlyUnlocked({
+        results: loadResults(),
+        tutorialCompleted: loadTutorialProgress().completed,
+        daily: loadDaily(),
+        sharedGame: loadAchievementState().shared,
+      });
+      markSeen(ids);
+      setUnlocked(ids);
+    }, 120);
     return () => clearTimeout(timer);
   }, [state.winner, mode.kind, game.gameId]);
 
@@ -257,7 +285,7 @@ export function GameView({
                 canAct={game.humanCanMove}
                 onMove={game.movePiece}
                 orientation={layout}
-                hintMove={hint?.move ?? null}
+                hintMove={hint?.move ?? coach.move}
                 routeFor={settings.route ? (mode.kind === "ai" ? mode.human : state.current) : null}
               />
               <AnimatePresence>
@@ -312,7 +340,7 @@ export function GameView({
                 aiTurn={game.aiTurn}
                 humanCanRoll={game.humanCanRoll}
                 humanCanMove={game.humanCanMove}
-                hintText={hint ? hintText(hint) : null}
+                hintText={hint ? hintText(hint) : coach.tip}
                 onHint={hintsEnabled ? requestHint : undefined}
                 diceSpeed={settings.diceSpeed}
                 onRoll={game.roll}
@@ -425,6 +453,23 @@ export function GameView({
                   ) : null}
                 </div>
 
+                {unlocked.length > 0 ? (
+                  <div className="mx-auto mt-4 max-w-[260px] rounded-lg border border-[var(--gold-soft)] bg-[var(--gold-faint)] px-3 py-2 text-left text-sm">
+                    <div className="text-[10px] uppercase tracking-widest text-[var(--gold)]">
+                      {unlocked.length === 1 ? "Achievement unlocked" : "Achievements unlocked"}
+                    </div>
+                    {unlocked.map((id) => {
+                      const a = ACHIEVEMENTS.find((x) => x.id === id);
+                      return a ? (
+                        <div key={id} className="mt-1 text-[var(--ink)]">
+                          <span aria-hidden className="mr-1.5 text-[var(--gold)]">{a.glyph}</span>
+                          {a.title}
+                        </div>
+                      ) : null;
+                    })}
+                  </div>
+                ) : null}
+
                 <div className="mt-6 flex flex-wrap justify-center gap-3">
                   <button className="btn btn-primary rounded-lg px-5 py-2 text-sm" onClick={game.newGame}>
                     Play again
@@ -447,6 +492,7 @@ export function GameView({
                   >
                     Replay
                   </button>
+                  <ShareButton replay={exportReplay(state, { mode })} className="btn rounded-lg px-5 py-2 text-sm" />
                   <button className="btn rounded-lg px-5 py-2 text-sm" onClick={onExit}>
                     Menu
                   </button>
