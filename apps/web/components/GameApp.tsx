@@ -11,6 +11,7 @@ import { Modal } from "./ui/Modal";
 import { HowToPlay } from "./HowToPlay";
 import { TutorialView } from "./TutorialView";
 import { SettingsPanel } from "./SettingsPanel";
+import { CONTACT_EMAIL, CONTACT_HREF } from "@/lib/contact";
 import { AtelierPanel } from "./AtelierPanel";
 import { StatsPanel } from "./StatsPanel";
 import { LeaderboardPanel } from "./LeaderboardPanel";
@@ -615,6 +616,12 @@ export function GameApp() {
         <footer className="mt-1.5 shrink-0 space-y-1.5">
           <div className="flex flex-wrap justify-center gap-1.5">{secondaryLinks(true)}</div>
           {donateNudge(true)}
+          <p className="text-center text-[11px] text-[var(--ink-dim)]">
+            Feedback?{" "}
+            <a className="text-[var(--gold)] underline-offset-2 hover:underline" href={CONTACT_HREF}>
+              {CONTACT_EMAIL}
+            </a>
+          </p>
           {importError ? <p className="text-center text-xs text-[var(--danger)]">{importError}</p> : null}
         </footer>
       </main>
@@ -665,6 +672,11 @@ export function GameApp() {
             {importError ? <p className="hidden text-xs text-[var(--danger)] lg:block">{importError}</p> : null}
             <footer className="hidden text-xs text-[var(--ink-dim)] lg:block">
               Classic Irving Finkel rules · British Museum reconstruction
+              <br />
+              Contact:{" "}
+              <a className="text-[var(--gold)] underline-offset-2 hover:underline" href={CONTACT_HREF}>
+                {CONTACT_EMAIL}
+              </a>
             </footer>
           </div>
 

@@ -3,6 +3,7 @@
 import { DIFFICULTIES } from "@ur/ai";
 import { useSettings, type Settings } from "@/lib/settings";
 import { Modal } from "./ui/Modal";
+import { CONTACT_EMAIL, CONTACT_HREF } from "@/lib/contact";
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -82,6 +83,17 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose(): voi
             onChange={(v) => update({ hints: v === "on" })}
           />
         </Row>
+        <Row label="Show the route">
+          <Segmented<"on" | "off">
+            label="Show the route"
+            value={settings.route ? "on" : "off"}
+            options={[
+              { id: "on", label: "On" },
+              { id: "off", label: "Off" },
+            ]}
+            onChange={(v) => update({ route: v === "on" })}
+          />
+        </Row>
         <Row label="Confirm new game">
           <Segmented<"on" | "off">
             label="Confirm new game"
@@ -141,6 +153,13 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose(): voi
         <p className="pt-2 text-xs text-[var(--ink-dim)]">
           Auto orientation follows your device rotation on touch screens and the header toggle on
           desktop. {DIFFICULTIES.length} AI tiers available — pick per game from the menu.
+        </p>
+        <p className="pt-2 text-xs text-[var(--ink-dim)]">
+          Bug, idea, or something confusing? Write to{" "}
+          <a className="text-[var(--gold)] underline-offset-2 hover:underline" href={CONTACT_HREF}>
+            {CONTACT_EMAIL}
+          </a>
+          .
         </p>
       </div>
     </Modal>

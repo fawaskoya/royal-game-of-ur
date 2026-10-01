@@ -258,6 +258,7 @@ export function GameView({
                 onMove={game.movePiece}
                 orientation={layout}
                 hintMove={hint?.move ?? null}
+                routeFor={settings.route ? (mode.kind === "ai" ? mode.human : state.current) : null}
               />
               <AnimatePresence>
                 {showRestored ? (

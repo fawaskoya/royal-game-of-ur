@@ -169,6 +169,7 @@ export function RoomGameScreen({
                 canAct={room.canMove}
                 onMove={room.movePiece}
                 orientation={layout}
+                routeFor={settings.route ? (room.mySeat ?? state.current) : null}
               />
               {!isOver ? (
                 <div className="pointer-events-none absolute inset-x-0 top-2 flex justify-center">
