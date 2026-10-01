@@ -199,6 +199,14 @@ export function GameView({
     [legal],
   );
 
+  // One replay object per finished game: an inline exportReplay() would mint a
+  // new object (and a new createdAt) on every render, re-running the replay
+  // viewer's per-position memo and drifting the exported timestamp.
+  const finishedReplay = useMemo(
+    () => (state.winner !== null ? exportReplay(state, { mode }) : null),
+    [state, mode],
+  );
+
   const passToast = tail.find((e) => e.type === "pass");
   const history = useMemo(() => buildHistory(state.history), [state.history]);
   const winStats = useMemo(() => {
@@ -491,7 +499,7 @@ export function GameView({
                   >
                     Replay
                   </button>
-                  <ShareButton replay={exportReplay(state, { mode })} className="btn rounded-lg px-5 py-2 text-sm" />
+                  {finishedReplay ? <ShareButton replay={finishedReplay} className="btn rounded-lg px-5 py-2 text-sm" /> : null}
                   <button className="btn rounded-lg px-5 py-2 text-sm" onClick={onExit}>
                     Menu
                   </button>
@@ -526,9 +534,9 @@ export function GameView({
         </Modal>
 
         <AnimatePresence>
-          {replayOpen && state.winner !== null ? (
+          {replayOpen && finishedReplay ? (
             <ReplayViewer
-              replay={exportReplay(state, { mode })}
+              replay={finishedReplay}
               autoAnalyze={replayAnalyze}
               onClose={() => setReplayOpen(false)}
             />
