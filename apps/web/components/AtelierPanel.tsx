@@ -81,8 +81,10 @@ const FLAIR_GLYPH: Partial<Record<SkuId, string>> = {
 };
 
 function priceLabel(sku: CosmeticSku): string {
-  // Individual SKUs aren't sold separately — one $1.99 purchase unlocks all.
-  return sku.priceUsd != null ? "Unlock All" : "Earned";
+  // Individual SKUs aren't sold separately — one $1.99 purchase unlocks all
+  // (the button's title and the banner above say so). Kept to one short word:
+  // the three-column grid leaves ~80px beside the preview button.
+  return sku.priceUsd != null ? "Unlock" : "Earned";
 }
 
 /* ── Live preview strip ──────────────────────────────────────────────────
@@ -637,7 +639,7 @@ export function AtelierPanel({ open, onClose }: { open: boolean; onClose(): void
         aria-labelledby={`atelier-tab-${tab}`}
         className="mt-3 max-h-[38vh] overflow-y-auto pr-0.5"
       >
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-2">
           {items.map((sku) => {
             const loadoutKey = LOADOUT_KEY_FOR_CATEGORY[sku.category];
             return (
