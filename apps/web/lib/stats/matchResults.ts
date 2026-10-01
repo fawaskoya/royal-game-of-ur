@@ -7,7 +7,7 @@
  */
 import type { GameState, PlayerId } from "@ur/engine";
 import type { GameMode } from "@/lib/useGame";
-import type { StorageLike } from "@/lib/persistence/gameStorage";
+import { browserStorage, type StorageLike } from "@/lib/persistence/gameStorage";
 
 export const RESULTS_VERSION = 1;
 const RESULTS_KEY = "ur:results";
@@ -48,16 +48,8 @@ export function resultFromGame(
   };
 }
 
-function defaultStorage(): StorageLike | null {
-  try {
-    if (typeof window === "undefined") return null;
-    return window.localStorage;
-  } catch {
-    return null;
-  }
-}
 
-export function loadResults(storage: StorageLike | null = defaultStorage()): MatchResult[] {
+export function loadResults(storage: StorageLike | null = browserStorage()): MatchResult[] {
   if (!storage) return [];
   try {
     const raw = storage.getItem(RESULTS_KEY);
@@ -78,7 +70,7 @@ export function loadResults(storage: StorageLike | null = defaultStorage()): Mat
   }
 }
 
-export function recordResult(result: MatchResult, storage: StorageLike | null = defaultStorage()): boolean {
+export function recordResult(result: MatchResult, storage: StorageLike | null = browserStorage()): boolean {
   if (!storage) return false;
   try {
     const results = [...loadResults(storage), result].slice(-MAX_RESULTS);
@@ -89,7 +81,7 @@ export function recordResult(result: MatchResult, storage: StorageLike | null = 
   }
 }
 
-export function clearResults(storage: StorageLike | null = defaultStorage()): void {
+export function clearResults(storage: StorageLike | null = browserStorage()): void {
   try {
     storage?.removeItem(RESULTS_KEY);
   } catch {

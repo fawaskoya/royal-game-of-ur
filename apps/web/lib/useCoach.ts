@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { hintFor } from "@ur/ai";
 import type { GameState, Move, PlayerId } from "@ur/engine";
 import { COACH_MAX_GAMES, openingTip } from "@/lib/coach";
 import { loadResults } from "@/lib/stats/matchResults";
@@ -22,9 +21,7 @@ export function useCoach(
   }, []);
 
   return useMemo(() => {
-    if (!enabled || !newbie || player === null) return { tip: null, move: null };
-    const tip = openingTip(state, player);
-    if (tip === null) return { tip: null, move: null };
-    return { tip, move: hintFor(state, { depth: 2 })?.move ?? null };
+    const tip = enabled && newbie && player !== null ? openingTip(state, player) : null;
+    return { tip: tip?.text ?? null, move: tip?.move ?? null };
   }, [enabled, newbie, player, state]);
 }

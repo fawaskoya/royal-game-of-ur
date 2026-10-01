@@ -20,8 +20,8 @@ import type {
   ServerEventBatch,
   TransportStatus,
 } from "@/lib/network/types";
-import { FunctionRegion } from "@supabase/supabase-js";
-import { ensureSession, getSupabaseClient } from "./supabaseClient";
+import type { FunctionRegion, RealtimeChannel } from "@supabase/supabase-js";
+import { ensureSession, getSupabase } from "./supabaseClient";
 
 /** Mirror of the server's TURN_TIMEOUT_SECONDS (game-move edge function) —
  * display/countdown only; the server clock is the authority on claims. */
@@ -44,7 +44,9 @@ export const ONLINE_TURN_TIMEOUT_SECONDS = 120;
  * Keep this equal to the project's region — if the database ever moves, this
  * moves with it, or every action pays an extra ocean crossing.
  */
-const FUNCTION_REGION = FunctionRegion.EuCentral1;
+// String literal of FunctionRegion.EuCentral1 — a value import of the enum
+// would pull all of supabase-js into the first-load bundle.
+const FUNCTION_REGION = "eu-central-1" as FunctionRegion;
 
 export type GameEndReason = "finish" | "resign" | "timeout";
 export interface GameEndedSignal {
@@ -94,7 +96,7 @@ export function prewarmGameServer(): void {
 }
 
 async function invoke<T>(action: string, payload: Record<string, unknown>, token: string): Promise<T> {
-  const supabase = getSupabaseClient();
+  const supabase = await getSupabase();
   if (!supabase) throw new Error("online play is not configured");
 
   // Cold starts are real: the first hit after the function has been idle can
@@ -167,7 +169,7 @@ export class SupabaseRoomTransport implements MultiplayerTransport {
     const ms = Date.parse(iso);
     if (Number.isFinite(ms)) this.#startedAt = ms;
   }
-  #channel: ReturnType<NonNullable<ReturnType<typeof getSupabaseClient>>["channel"]> | null = null;
+  #channel: RealtimeChannel | null = null;
 
   /** Set once `connect()` resolves — the room hook reads these, mirroring
    * how `LocalRoomTransport.onWelcome` surfaces "who am I, what ruleset". */
@@ -186,7 +188,7 @@ export class SupabaseRoomTransport implements MultiplayerTransport {
 
   /** roomId here is the game's UUID (resolve a room code via `joinOnlineRoom` first). */
   async connect(gameId: string, _token: string): Promise<void> {
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabase();
     if (!supabase) throw new Error("online play is not configured");
     this.#setStatus("connecting");
     this.#token = await ensureSession();
@@ -253,7 +255,7 @@ export class SupabaseRoomTransport implements MultiplayerTransport {
   /** Refetch the full event log and re-emit it as one batch from seq 0.
    * Cheap and idempotent — the hook's seq-slotting drops known events. */
   async resync(): Promise<void> {
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabase();
     if (!supabase || !this.#gameId) return;
     const { data, error } = await supabase
       .from("game_events")

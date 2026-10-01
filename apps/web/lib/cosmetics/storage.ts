@@ -10,7 +10,7 @@
  * safe — `resolveLoadout` fails closed against the catalog + ownership on
  * every read, regardless of what this layer hands it.
  */
-import type { StorageLike } from "@/lib/persistence/gameStorage";
+import { browserStorage, type StorageLike } from "@/lib/persistence/gameStorage";
 import { CATALOG_BY_ID } from "./catalog";
 import { DEFAULT_LOADOUT } from "./freeGrants";
 import type { CosmeticLoadout, SkuId } from "./types";
@@ -31,14 +31,6 @@ export const DEFAULT_COSMETICS_STATE: CosmeticsState = {
   devGrants: [],
 };
 
-function defaultStorage(): StorageLike | null {
-  try {
-    if (typeof window === "undefined") return null;
-    return window.localStorage;
-  } catch {
-    return null; // storage disabled (private mode / policy)
-  }
-}
 
 function isKnownSkuId(value: unknown): value is SkuId {
   return typeof value === "string" && CATALOG_BY_ID.has(value as SkuId);
@@ -53,7 +45,7 @@ function readSlot(value: unknown, fallback: SkuId): SkuId {
  * missing field never throws — worst case a slot (or the whole state)
  * reverts to the free default.
  */
-export function loadCosmetics(storage: StorageLike | null = defaultStorage()): CosmeticsState {
+export function loadCosmetics(storage: StorageLike | null = browserStorage()): CosmeticsState {
   if (!storage) return DEFAULT_COSMETICS_STATE;
   try {
     const raw = storage.getItem(COSMETICS_KEY);
@@ -82,7 +74,7 @@ export function loadCosmetics(storage: StorageLike | null = defaultStorage()): C
   }
 }
 
-export function saveCosmetics(state: CosmeticsState, storage: StorageLike | null = defaultStorage()): boolean {
+export function saveCosmetics(state: CosmeticsState, storage: StorageLike | null = browserStorage()): boolean {
   if (!storage) return false;
   try {
     const payload =

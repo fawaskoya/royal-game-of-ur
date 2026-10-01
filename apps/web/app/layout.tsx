@@ -3,11 +3,20 @@ import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { ThemeEffect } from "@/components/ThemeEffect";
 import { CosmeticsEffect } from "@/components/CosmeticsEffect";
+import { CONTACT_EMAIL } from "@/lib/contact";
+import { JsonLd, ORGANIZATION_ID, WEBSITE_ID } from "@/lib/site/jsonld";
+import { SITE_NAME, SITE_URL } from "@/lib/site/meta";
 
-const SITE_URL = "https://royalgameofur.app";
 const SITE_TITLE = "Royal Game of Ur — Play the World's Oldest Board Game Online";
+// ~155 characters: what Google shows before truncating.
 const SITE_DESCRIPTION =
-  "Play the Royal Game of Ur online free — a 4,500-year-old board game rediscovered in ancient Mesopotamia, played by British Museum scholar Irving Finkel's authentic rules. Play vs AI, pass-and-play, or online with a live Elo ladder. No ads, no pay-to-win.";
+  "Play the Royal Game of Ur free in your browser — the 4,500-year-old board game, with Irving Finkel's rules. Play the AI, a friend, or online. No ads.";
+
+// Search-console ownership tags, set per environment (no code change needed).
+const verification: Metadata["verification"] = {
+  ...(process.env.GOOGLE_SITE_VERIFICATION ? { google: process.env.GOOGLE_SITE_VERIFICATION } : {}),
+  ...(process.env.BING_SITE_VERIFICATION ? { other: { "msvalidate.01": process.env.BING_SITE_VERIFICATION } } : {}),
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -27,7 +36,6 @@ export const metadata: Metadata = {
   ],
   category: "Games",
   authors: [{ name: "Royal Game of Ur" }],
-  alternates: { canonical: SITE_URL },
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }, { url: "/icon-192.png", sizes: "192x192" }],
@@ -55,36 +63,48 @@ export const metadata: Metadata = {
   robots: {
     index: true,
     follow: true,
-    googleBot: { index: true, follow: true, "max-image-preview": "large" },
+    googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 },
   },
+  verification,
+  formatDetection: { telephone: false, email: false, address: false },
 };
 
 export const viewport: Viewport = {
   themeColor: "#0b0e14",
 };
 
-// Rich-result eligibility for search engines. No aggregateRating/review here —
-// those fields require real, verifiable data; fabricating them risks a
-// structured-data manual action.
-const STRUCTURED_DATA = {
+// Site-wide entity graph: who publishes the site and what the site is. The
+// game itself (VideoGame) is described on the homepage. No ratings/reviews:
+// those need real, verifiable data; inventing them risks a manual action.
+const SITE_GRAPH = {
   "@context": "https://schema.org",
-  "@type": "VideoGame",
-  name: "Royal Game of Ur",
-  description: SITE_DESCRIPTION,
-  url: SITE_URL,
-  genre: ["Board Game", "Strategy"],
-  gamePlatform: "Web Browser",
-  applicationCategory: "Game",
-  operatingSystem: "Any",
-  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
-  author: { "@type": "Organization", name: "Royal Game of Ur" },
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": ORGANIZATION_ID,
+      name: SITE_NAME,
+      url: SITE_URL,
+      logo: { "@type": "ImageObject", url: `${SITE_URL}/icon-512.png`, width: 512, height: 512 },
+      email: CONTACT_EMAIL,
+      contactPoint: { "@type": "ContactPoint", contactType: "customer support", email: CONTACT_EMAIL },
+    },
+    {
+      "@type": "WebSite",
+      "@id": WEBSITE_ID,
+      name: SITE_NAME,
+      alternateName: ["Game of Ur", "Royal Game of Ur Online"],
+      url: SITE_URL,
+      inLanguage: "en",
+      publisher: { "@id": ORGANIZATION_ID },
+    },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body className="antialiased">
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA) }} />
+        <JsonLd data={SITE_GRAPH} />
         <ThemeEffect />
         <CosmeticsEffect />
         {children}

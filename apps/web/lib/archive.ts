@@ -9,7 +9,7 @@
 import { importReplay, type GameState, type Replay } from "@ur/engine";
 import { exportReplay } from "@ur/engine";
 import type { GameMode } from "@/lib/useGame";
-import type { StorageLike } from "@/lib/persistence/gameStorage";
+import { browserStorage, type StorageLike } from "@/lib/persistence/gameStorage";
 
 export const ARCHIVE_VERSION = 1;
 const ARCHIVE_KEY = "ur:archive";
@@ -26,16 +26,8 @@ export interface ArchiveEntry {
   readonly replay: string;
 }
 
-function defaultStorage(): StorageLike | null {
-  try {
-    if (typeof window === "undefined") return null;
-    return window.localStorage;
-  } catch {
-    return null;
-  }
-}
 
-export function loadArchive(storage: StorageLike | null = defaultStorage()): ArchiveEntry[] {
+export function loadArchive(storage: StorageLike | null = browserStorage()): ArchiveEntry[] {
   if (!storage) return [];
   try {
     const raw = storage.getItem(ARCHIVE_KEY);
@@ -61,7 +53,7 @@ export function archiveGame(
   state: GameState,
   mode: GameMode,
   gameId: string,
-  storage: StorageLike | null = defaultStorage(),
+  storage: StorageLike | null = browserStorage(),
 ): boolean {
   if (!storage || state.winner === null) return false;
   try {
@@ -81,7 +73,7 @@ export function archiveGame(
   }
 }
 
-export function deleteArchiveEntry(id: string, storage: StorageLike | null = defaultStorage()): void {
+export function deleteArchiveEntry(id: string, storage: StorageLike | null = browserStorage()): void {
   if (!storage) return;
   try {
     const entries = loadArchive(storage).filter((e) => e.id !== id);

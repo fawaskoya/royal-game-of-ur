@@ -20,7 +20,7 @@ import {
   type CosmeticSku,
   type SkuId,
 } from "@/lib/cosmetics";
-import { ensureSession, getSupabaseClient } from "@/lib/multiplayer/supabaseClient";
+import { ensureSession, getSupabaseIfSession } from "@/lib/multiplayer/supabaseClient";
 import { signInWithEmail, signUpWithEmail } from "@/lib/multiplayer/auth";
 import { trackSkinClick } from "@/lib/analytics";
 import { Modal } from "./ui/Modal";
@@ -266,10 +266,11 @@ export function AtelierPanel({ open, onClose }: { open: boolean; onClose(): void
     const refresh = () => void fetchEntitlements().then((skus) => !disposed && setServerOwned(skus));
     refresh();
     // Purchases bind to the profile — warn guests theirs lives in this browser.
-    void getSupabaseClient()
-      ?.auth.getUser()
-      .then(({ data }) => {
-        if (!disposed) setIsGuest(Boolean(data.user && (data.user.is_anonymous || !data.user.email)));
+    void getSupabaseIfSession()
+      .then((supabase) => supabase?.auth.getUser())
+      .then((res) => {
+        const user = res?.data.user;
+        if (!disposed) setIsGuest(Boolean(user && (user.is_anonymous || !user.email)));
       });
     window.addEventListener("focus", refresh);
     return () => {

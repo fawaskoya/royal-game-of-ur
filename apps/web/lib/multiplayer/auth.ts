@@ -6,7 +6,7 @@
  * - Registered: email + password sign-up / sign-in; sessions persist.
  * - Upgrade: anonymous users can attach email/password without losing the uid.
  */
-import { ensureSession, getSupabaseClient } from "./supabaseClient";
+import { ensureSession, getSupabase } from "./supabaseClient";
 import { fetchIdentity, type OnlineIdentity } from "./onlineIdentity";
 
 export type AuthUser = {
@@ -91,7 +91,7 @@ export function prewarmAuth(): void {
 }
 
 async function computeSnapshot(): Promise<AuthSnapshot> {
-  const supabase = getSupabaseClient();
+  const supabase = await getSupabase();
   if (!supabase) return { user: null, identity: null };
   try {
     await ensureSession();
@@ -132,7 +132,7 @@ export async function getAuthSnapshot(): Promise<AuthSnapshot> {
 }
 
 export async function signUpWithEmail(email: string, password: string): Promise<AuthSnapshot> {
-  const supabase = getSupabaseClient();
+  const supabase = await getSupabase();
   if (!supabase) throw new Error("online play is not configured");
   const cleaned = email.trim().toLowerCase();
   if (!cleaned.includes("@")) throw new Error("Enter a valid email address.");
@@ -154,7 +154,7 @@ export async function signUpWithEmail(email: string, password: string): Promise<
 }
 
 export async function signInWithEmail(email: string, password: string): Promise<AuthSnapshot> {
-  const supabase = getSupabaseClient();
+  const supabase = await getSupabase();
   if (!supabase) throw new Error("online play is not configured");
   const cleaned = email.trim().toLowerCase();
   const { error } = await supabase.auth.signInWithPassword({ email: cleaned, password });
@@ -163,7 +163,7 @@ export async function signInWithEmail(email: string, password: string): Promise<
 }
 
 export async function signOut(): Promise<void> {
-  const supabase = getSupabaseClient();
+  const supabase = await getSupabase();
   if (!supabase) return;
   cached = null;
   try {

@@ -31,7 +31,7 @@ import {
   type CosmeticLoadout,
   type SkuId,
 } from "@/lib/cosmetics";
-import { getSupabaseClient } from "@/lib/multiplayer/supabaseClient";
+import { onSupabaseReady } from "@/lib/multiplayer/supabaseClient";
 
 const SLOT_FOR_CATEGORY: Record<CosmeticCategory, keyof CosmeticLoadout> = {
   board: "board",
@@ -103,14 +103,19 @@ export function CosmeticsEffect() {
     }
 
     // Sign-in/out changes what's owned (and may un-resolve an equipped paid
-    // skin) — re-merge server entitlements on auth transitions.
-    const supabase = getSupabaseClient();
-    const sub = supabase?.auth.onAuthStateChange(() => refreshEntitlements());
+    // skin) — re-merge server entitlements on auth transitions. Passive: this
+    // subscribes when online play loads the client, and never loads it itself
+    // (a visitor with no session has no entitlements to fetch).
+    let sub: { data: { subscription: { unsubscribe(): void } } } | null = null;
+    const stopWaiting = onSupabaseReady((supabase) => {
+      if (!disposed && !sub) sub = supabase.auth.onAuthStateChange(() => refreshEntitlements());
+    });
 
     return () => {
       disposed = true;
       for (const t of timers) clearTimeout(t);
       window.removeEventListener("ur:cosmetics-changed", apply);
+      stopWaiting();
       sub?.data.subscription.unsubscribe();
     };
   }, []);

@@ -1029,3 +1029,33 @@ body {
     animation: route-glyph-pulse 2.6s ease-in-out infinite;
   }
 }
+
+/* Homepage content sits under the menu; while a game is on screen it would
+   only be scroll-bait, so it disappears. */
+html[data-screen="play"] .home-content {
+  display: none;
+}
+
+/* Printable board: on paper, only the sheet prints — black on white, landscape. */
+@media print {
+  @page {
+    size: landscape;
+    margin: 12mm;
+  }
+  html,
+  body {
+    background: #fff !important;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .print-sheet,
+  .print-sheet * {
+    visibility: visible;
+  }
+  .print-sheet {
+    position: absolute;
+    inset: 0;
+    padding: 0 !important;
+  }
+}

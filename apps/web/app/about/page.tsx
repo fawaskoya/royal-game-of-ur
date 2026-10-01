@@ -1,11 +1,13 @@
 import { SiteShell, H2, A, UL } from "@/components/site/SiteShell";
 import { pageMeta } from "@/lib/site/meta";
+import { JsonLd, breadcrumb } from "@/lib/site/jsonld";
 import { CONTACT_EMAIL, CONTACT_HREF } from "@/lib/contact";
 
 export const metadata = pageMeta(
   "/about",
-  "About",
+  "About Royal Game of Ur — Free, Ad-Free, Faithful Rules",
   "Royal Game of Ur is a free, ad-free, faithful digital version of the world's oldest playable board game, with honest AI and online play.",
+  { ownImage: true },
 );
 
 export default function AboutPage() {
@@ -14,6 +16,7 @@ export default function AboutPage() {
       title="About Royal Game of Ur"
       intro="A faithful, free way to play the oldest board game that can still be played — alone, with a friend, or against the world."
     >
+      <JsonLd data={breadcrumb("/about", "About")} />
       <p>
         Royal Game of Ur has been played since around 2600 BCE. This site is a modern digital edition built for people who
         have never heard of it as much as for people who love it. It uses Irving Finkel&apos;s British Museum

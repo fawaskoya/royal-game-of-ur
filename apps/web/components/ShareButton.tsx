@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Replay } from "@ur/engine";
 import { shareUrl } from "@/lib/share";
 import { markShared } from "@/lib/achievements";
@@ -9,33 +9,42 @@ type Phase = "idle" | "copied" | "failed";
 
 /**
  * Share a finished game as a link. Uses the native share sheet where there is
- * one (phones), otherwise copies the link. The link carries the whole game —
- * see lib/share.ts — so there is nothing to upload and nothing to expire.
+ * one (phones), otherwise — or if the sheet is unavailable, as in some in-app
+ * browsers — copies the link. The link carries the whole game (lib/share.ts),
+ * so there is nothing to upload and nothing to expire.
  */
 export function ShareButton({ replay, className }: { replay: Replay; className?: string }) {
   const [phase, setPhase] = useState<Phase>("idle");
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => void (timer.current && clearTimeout(timer.current)), []);
 
   const settle = (next: Phase) => {
     setPhase(next);
-    setTimeout(() => setPhase("idle"), 2200);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setPhase("idle"), 2200);
+  };
+
+  const copy = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      markShared();
+      settle("copied");
+    } catch {
+      settle("failed");
+    }
   };
 
   const share = async () => {
     const url = shareUrl(window.location.origin, replay);
     if (url === null) return settle("failed");
+    if (typeof navigator.share !== "function" || !window.matchMedia("(pointer: coarse)").matches) return copy(url);
     try {
-      if (typeof navigator.share === "function" && window.matchMedia("(pointer: coarse)").matches) {
-        await navigator.share({ title: "Royal Game of Ur", text: "Watch this game of Ur", url });
-        markShared();
-        return;
-      }
-      await navigator.clipboard.writeText(url);
+      await navigator.share({ title: "Royal Game of Ur", text: "Watch this game of Ur", url });
       markShared();
-      settle("copied");
     } catch (err) {
-      // Dismissing the share sheet is not an error.
+      // Dismissing the sheet is a choice, not a failure; anything else falls back to copying.
       if (err instanceof DOMException && err.name === "AbortError") return;
-      settle("failed");
+      await copy(url);
     }
   };
 

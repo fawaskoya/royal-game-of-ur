@@ -51,6 +51,7 @@ export function DailyChallenge({ onClose }: { onClose(): void }) {
   const rank = chosen && puzzle ? rankOf(puzzle, chosen) : previous?.rank ?? null;
   const total = puzzle?.ranking.length ?? previous?.of ?? 0;
   const best = puzzle?.ranking[0] ?? null;
+  const bestReason = best?.tags.find((t) => t !== "risky") ?? null;
 
   const choose = (move: Move) => {
     if (!puzzle || answered) return;
@@ -161,7 +162,7 @@ export function DailyChallenge({ onClose }: { onClose(): void }) {
                     <p className="text-xs text-[var(--ink-dim)]">
                       Best move: {best.move.from === 0 ? "enter a piece" : `square ${best.move.from}`} →{" "}
                       {best.move.to > 14 ? "home" : `square ${best.move.to}`}
-                      {best.tags.find((t) => t !== "risky") ? ` — ${TIP[best.tags.find((t) => t !== "risky")!]}` : ""}.
+                      {bestReason ? ` — ${TIP[bestReason]}` : ""}.
                     </p>
                   ) : null}
                   <p className="text-xs text-[var(--ink-dim)]">

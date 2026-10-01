@@ -19,9 +19,8 @@ import { Modal } from "./ui/Modal";
 import { ReplayViewer } from "./ReplayViewer";
 import { useCoach } from "@/lib/useCoach";
 import { ShareButton } from "./ShareButton";
-import { ACHIEVEMENTS, markSeen, newlyUnlocked } from "@/lib/achievements";
+import { ACHIEVEMENTS, loadAchievementState, markSeen, newlyUnlocked } from "@/lib/achievements";
 import { loadDaily } from "@/lib/daily";
-import { loadAchievementState } from "@/lib/achievements";
 import { loadTutorialProgress } from "@/lib/useTutorial";
 
 const HINT_COPY: Record<HintTag, string> = {

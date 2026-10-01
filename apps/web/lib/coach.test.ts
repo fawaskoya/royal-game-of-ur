@@ -7,7 +7,10 @@ describe("opening coach", () => {
     const fresh = createGame();
     expect(openingTip(fresh, 0)).toBeNull(); // must roll first
     const s = applyRoll(fresh, makeRoll(4));
-    expect(openingTip(s, 0)).toMatch(/^Tip 1\/3: /);
+    const tip = openingTip(s, 0)!;
+    expect(tip.text).toMatch(/^Tip 1\/3: /);
+    expect(s.dice!.total).toBe(4);
+    expect(tip.move.to - tip.move.from).toBe(4); // a real move for this roll
     expect(openingTip(s, 1)).toBeNull(); // not their turn
   });
 

@@ -14,7 +14,7 @@
  * flair is still gated by ownership via resolveLoadout before anything
  * calls `saveSharedFlair`.
  */
-import { getSupabaseClient } from "@/lib/multiplayer/supabaseClient";
+import { getSupabase, getSupabaseIfSession } from "@/lib/multiplayer/supabaseClient";
 import { CATALOG_BY_ID } from "./catalog";
 import type { SkuId } from "./types";
 
@@ -29,7 +29,7 @@ function isKnownSku(value: unknown): value is SkuId {
 /** Paid SKUs the signed-in player owns server-side; [] in every failure mode. */
 export const fetchEntitlements: FetchEntitlements = async () => {
   try {
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseIfSession();
     if (!supabase) return [];
     const { data: sessionData } = await supabase.auth.getSession();
     if (!sessionData.session) return [];
@@ -45,7 +45,7 @@ export const fetchEntitlements: FetchEntitlements = async () => {
  * players' identity surfaces can show it. Fire-and-forget semantics. */
 export async function saveSharedFlair(flair: SkuId | null): Promise<boolean> {
   try {
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseIfSession();
     if (!supabase) return false;
     const {
       data: { user },
@@ -65,7 +65,7 @@ export async function saveSharedFlair(flair: SkuId | null): Promise<boolean> {
 export async function fetchSharedFlair(profileIds: readonly string[]): Promise<Record<string, SkuId>> {
   try {
     if (profileIds.length === 0) return {};
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabase();
     if (!supabase) return {};
     const { data, error } = await supabase.from("profiles").select("id, flair").in("id", [...profileIds]);
     if (error || !data) return {};

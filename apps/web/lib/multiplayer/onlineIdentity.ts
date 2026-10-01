@@ -5,7 +5,7 @@
  * server-assigned handle (deterministic, editable via the own-profile RLS
  * policy); ratings are server-written only — the client just reads.
  */
-import { ensureSession, getSupabaseClient } from "./supabaseClient";
+import { ensureSession, getSupabase } from "./supabaseClient";
 import { invokeGameAction } from "./supabaseTransport";
 
 export interface OnlineIdentity {
@@ -28,7 +28,7 @@ export async function saveHandle(handle: string): Promise<string> {
   if (cleaned.length < HANDLE_MIN || cleaned.length > HANDLE_MAX) {
     throw new Error(`Names are ${HANDLE_MIN}–${HANDLE_MAX} characters.`);
   }
-  const supabase = getSupabaseClient();
+  const supabase = await getSupabase();
   if (!supabase) throw new Error("online play is not configured");
   await ensureSession();
   const {
@@ -54,7 +54,7 @@ export interface LeaderboardRow {
 
 /** Top of the casual pool plus your own row (flagged) if you're rated. */
 export async function fetchLeaderboard(limit = 25): Promise<LeaderboardRow[]> {
-  const supabase = getSupabaseClient();
+  const supabase = await getSupabase();
   if (!supabase) throw new Error("online play is not configured");
   const { data: session } = await supabase.auth.getSession();
   const myId = session.session?.user.id ?? null;

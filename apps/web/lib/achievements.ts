@@ -8,7 +8,7 @@ import { DIFFICULTIES } from "@ur/ai";
 import type { MatchResult } from "@/lib/stats/matchResults";
 import { summarizeStats } from "@/lib/stats/matchResults";
 import { bestDailyStreak, type DailyRecord } from "@/lib/daily";
-import type { StorageLike } from "@/lib/persistence/gameStorage";
+import { browserStorage, type StorageLike } from "@/lib/persistence/gameStorage";
 
 export interface AchievementContext {
   readonly results: readonly MatchResult[];
@@ -169,20 +169,13 @@ export function unlockedIds(ctx: AchievementContext): string[] {
 const SEEN_KEY = "ur:achievements";
 const SEEN_VERSION = 1;
 
-function defaultStorage(): StorageLike | null {
-  try {
-    return typeof window === "undefined" ? null : window.localStorage;
-  } catch {
-    return null;
-  }
-}
 
 interface Persisted {
   readonly seen: readonly string[];
   readonly shared: boolean;
 }
 
-export function loadAchievementState(storage: StorageLike | null = defaultStorage()): Persisted {
+export function loadAchievementState(storage: StorageLike | null = browserStorage()): Persisted {
   const empty: Persisted = { seen: [], shared: false };
   if (!storage) return empty;
   try {
@@ -204,19 +197,19 @@ function save(state: Persisted, storage: StorageLike | null): void {
   }
 }
 
-export function markShared(storage: StorageLike | null = defaultStorage()): void {
+export function markShared(storage: StorageLike | null = browserStorage()): void {
   const cur = loadAchievementState(storage);
   if (!cur.shared) save({ ...cur, shared: true }, storage);
 }
 
 /** Ids unlocked but not yet announced. */
-export function newlyUnlocked(ctx: AchievementContext, storage: StorageLike | null = defaultStorage()): string[] {
+export function newlyUnlocked(ctx: AchievementContext, storage: StorageLike | null = browserStorage()): string[] {
   const seen = new Set(loadAchievementState(storage).seen);
   return unlockedIds(ctx).filter((id) => !seen.has(id));
 }
 
 /** Record ids as announced so they aren't toasted twice. */
-export function markSeen(ids: readonly string[], storage: StorageLike | null = defaultStorage()): void {
+export function markSeen(ids: readonly string[], storage: StorageLike | null = browserStorage()): void {
   if (ids.length === 0) return;
   const cur = loadAchievementState(storage);
   save({ ...cur, seen: [...new Set([...cur.seen, ...ids])] }, storage);
